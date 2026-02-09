@@ -13,11 +13,11 @@ class ProfileScreen extends StatelessWidget {
     }
 
     final student = {
-      "name": args?['name'] ?? "Alex Johnson",
+      "name": args?['name'] ?? "Johan Jomy Kuruvilla",
       "branch": args?['branch'] ?? "Computer Science & Engineering",
-      "college": args?['college'] ?? "Stitch Institute of Technology",
-      "busNumber": args?['busNumber'] ?? "42B",
-      "busStop": args?['busStop'] ?? "North Avenue, Stop #5",
+      "college": args?['college'] ?? "Saintgits College of Engineering",
+      "busNumber": args?['busNumber'] ?? "13",
+      "busStop": args?['busStop'] ?? "Alumthuruty Market",
       "feeStatus": args?['feeStatus'] ?? "Paid",
       "imageUrl": args?['imageUrl'] ?? "https://i.pravatar.cc/300?u=alex",
     };
@@ -33,13 +33,11 @@ class ProfileScreen extends StatelessWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
+        automaticallyImplyLeading: false,
         title: Text('Student Profile', style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: textColor),
-          onPressed: () => Navigator.pop(context),
-        ),
       ),
-      body: SingleChildScrollView(
+      body: SafeArea(
+        child: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           children: [
@@ -99,6 +97,7 @@ class ProfileScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }

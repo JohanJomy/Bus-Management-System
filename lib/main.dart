@@ -2,11 +2,15 @@ import 'package:flutter/material.dart';
 
 // Import all your screen files here
 // Make sure these filenames match what you saved in your lib folder
-import 'home_screen.dart';
-import 'live_tracking_screen.dart';
-import 'fee_payment_screen.dart';
-import 'restricted_screen.dart';
-import 'profile_screen.dart';
+import 'student/home_screen.dart';
+import 'login.dart';
+import 'student/student_login.dart';
+import 'student/live_tracking_screen.dart';
+import 'student/fee_payment_screen.dart';
+import 'student/restricted_screen.dart';
+import 'student/profile_screen.dart';
+import 'driver/dashboard.dart';
+import 'driver/driver_login.dart';
 
 void main() {
   runApp(const BusApp());
@@ -67,11 +71,15 @@ class BusApp extends StatelessWidget {
       // 2. Navigation Routes
       initialRoute: '/',
       routes: {
-        '/': (context) => const StudentHomeScreen(),
+        '/': (context) => const RoleSelectionScreen(),
+        '/student/login': (context) => const StudentLoginScreen(),
+        '/home': (context) => const StudentHomeScreen(),
         '/tracking': (context) => const LiveTrackingScreen(),
         '/fees': (context) => const FeePaymentScreen(),
         '/restricted': (context) => const RestrictedScreen(),
         '/profile': (context) => const ProfileScreen(),
+        '/driver': (context) => const DriverDashboard(),
+        '/driver/login': (context) => const DriverLoginScreen(),
       },
     );
   }
