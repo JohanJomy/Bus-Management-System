@@ -263,8 +263,8 @@ class _DriverDashboardState extends State<DriverDashboard> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('UPCOMING', style: TextStyle(color: primary, fontSize: 10, fontWeight: FontWeight.bold)),
-                        Text('Oakridge School', style: TextStyle(color: textPrim, fontSize: 14, fontWeight: FontWeight.bold)),
-                        Text('0.5 miles • 3 mins', style: TextStyle(color: textSec, fontSize: 12)),
+                        Text('Saintgits College of Engineering', style: TextStyle(color: textPrim, fontSize: 14, fontWeight: FontWeight.bold)),
+                        Text('10 km • 25 mins', style: TextStyle(color: textSec, fontSize: 12)),
                       ],
                     ),
                   ),

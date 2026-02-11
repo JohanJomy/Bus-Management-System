@@ -16,16 +16,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
     // Allow empty login for testing
     final id = idController.text.isNotEmpty ? idController.text : '202400123';
     
-    Navigator.pushReplacementNamed(context, '/home', arguments: {
-      'id': id,
-      'name': 'Student $id',
-      'branch': 'Computer Science & Engineering',
-      'college': 'Stitch Institute of Technology',
-      'busNumber': '42B',
-      'busStop': 'North Avenue, Stop #5',
-      'feeStatus': 'Paid',
-      'imageUrl': 'https://i.pravatar.cc/300?u=$id',
-    });
+    Navigator.pushReplacementNamed(context, '/home');
   }
 
   @override

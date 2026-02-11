@@ -2,7 +2,7 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <application
-        android:label="firstly"
+        android:label="Bus Management System"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

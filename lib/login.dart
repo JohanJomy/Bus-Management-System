@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'admin/admin_dashboard.dart';
 
 class RoleSelectionScreen extends StatelessWidget {
   const RoleSelectionScreen({super.key});
@@ -81,6 +82,22 @@ class RoleSelectionScreen extends StatelessWidget {
                     icon: Icons.airline_seat_recline_normal,
                     label: "DRIVER",
                     onTap: () => Navigator.pushNamed(context, '/driver/login'),
+                    primaryBlue: primaryBlue,
+                  ),
+                  
+                  const SizedBox(height: 16), // gap-4
+
+                  // Admin Button
+                  _buildGlassButton(
+                    context,
+                    icon: Icons.admin_panel_settings,
+                    label: "ADMIN",
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const DashboardScreen()),
+                      );
+                    },
                     primaryBlue: primaryBlue,
                   ),
 

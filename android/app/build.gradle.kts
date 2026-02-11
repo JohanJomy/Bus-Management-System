@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.firstly"
+    namespace = "com.example.Bus"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 

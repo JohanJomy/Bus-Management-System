@@ -22,7 +22,7 @@ class BusApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Stitch Bus App',
+      title: 'Bus App',
       debugShowCheckedModeBanner: false,
       
       // 1. Theme Configuration
