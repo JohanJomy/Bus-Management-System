@@ -1,4 +1,4 @@
-package com.example.firstly
+package com.example.jjns
 
 import io.flutter.embedding.android.FlutterActivity
 

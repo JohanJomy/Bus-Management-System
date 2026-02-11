@@ -100,20 +100,31 @@ class HomeContent extends StatelessWidget {
               ),
               Row(
                 children: [
-                  _buildHeaderIcon(Icons.notifications_outlined, isDark, hasBadge: true),
+                  GestureDetector(
+                    onTap: () {
+                      // TODO: Link notifications screen here
+                    },
+                    child: _buildHeaderIcon(Icons.notifications_outlined, isDark, hasBadge: true),
+                  ),
                   const SizedBox(width: 12),
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: isDark ? Colors.grey[800]! : Colors.white, width: 2),
-                      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4)],
-                    ),
-                    child: Icon(
-                      Icons.person_outline,
-                      color: isDark ? Colors.white70 : Colors.grey[600],
+                  GestureDetector(
+                    onTap: () {
+                      final state = context.findAncestorStateOfType<_StudentHomeScreenState>();
+                      state?._handleNavTap(3);
+                    },
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: isDark ? Colors.grey[800]! : Colors.white, width: 2),
+                        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4)],
+                      ),
+                      child: Icon(
+                        Icons.person_outline,
+                        color: isDark ? Colors.white70 : Colors.grey[600],
+                      ),
                     ),
                   ),
                 ],
