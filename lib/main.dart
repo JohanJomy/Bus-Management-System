@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-
-// Import all your screen files here
-// Make sure these filenames match what you saved in your lib folder
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'student/home_screen.dart';
 import 'login.dart';
 import 'student/student_login.dart';
@@ -12,7 +11,11 @@ import 'student/profile_screen.dart';
 import 'driver/dashboard.dart';
 import 'driver/driver_login.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const BusApp());
 }
 

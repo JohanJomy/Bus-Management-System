@@ -4,6 +4,28 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:firebase_database/firebase_database.dart';
+
+class BusLocation {
+  final double lat;
+  final double lng;
+  final int timestamp;
+  final String status;
+
+  BusLocation({
+    required this.lat,
+    required this.lng,
+    required this.timestamp,
+    required this.status,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'lat': lat,
+        'lng': lng,
+        'ts': timestamp,
+        'status': status,
+      };
+}
 
 class DriverDashboard extends StatefulWidget {
   const DriverDashboard({super.key});
@@ -13,7 +35,7 @@ class DriverDashboard extends StatefulWidget {
 }
 
 class _DriverDashboardState extends State<DriverDashboard> {
-  bool isLiveSharing = true;
+  bool isTripActive = false;
   final MapController _mapController = MapController();
 
   // Saintgits College of Engineering (Approximate)
@@ -21,11 +43,18 @@ class _DriverDashboardState extends State<DriverDashboard> {
 
   LatLng? _currentPosition;
   bool _isLoadingLocation = true;
+  Timer? _locationTimer;
 
   @override
   void initState() {
     super.initState();
     _determinePosition();
+  }
+
+  @override
+  void dispose() {
+    _locationTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _determinePosition() async {
@@ -84,6 +113,51 @@ class _DriverDashboardState extends State<DriverDashboard> {
       debugPrint("Error getting location: $e");
       setState(() => _isLoadingLocation = false);
     }
+  }
+
+  Future<void> _sendLocationOnce({String status = 'running'}) async {
+    if (_currentPosition == null) {
+      await _determinePosition();
+    }
+    if (_currentPosition == null) return;
+
+    final busLocation = BusLocation(
+      lat: _currentPosition!.latitude,
+      lng: _currentPosition!.longitude,
+      timestamp: DateTime.now().millisecondsSinceEpoch,
+      status: status,
+    );
+
+    try {
+      final ref = FirebaseDatabase.instance.ref('buses/13/location');
+      await ref.set(busLocation.toJson());
+      if (mounted && status != 'active') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Trip $status, location sent')),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error sending location to Firebase: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to send location')),
+        );
+      }
+    }
+  }
+
+  void _startLiveLocation() {
+    _locationTimer?.cancel();
+    _locationTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      _sendLocationOnce(status: 'active');
+    });
+    _sendLocationOnce(status: 'active');
+  }
+
+  void _stopLiveLocation() {
+    _locationTimer?.cancel();
+    _locationTimer = null;
+    _sendLocationOnce(status: 'inactive');
   }
 
   void _fitBounds() {
@@ -180,42 +254,36 @@ class _DriverDashboardState extends State<DriverDashboard> {
                         
                         const SizedBox(height: 32),
 
-                        // Live Sharing Switch
-                        SizedBox(
-                          width: 280,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text('Live Sharing', style: TextStyle(color: textSec, fontSize: 14, fontWeight: FontWeight.w500)),
-                              Switch(
-                                value: isLiveSharing, 
-                                onChanged: (v) => setState(() => isLiveSharing = v),
-                                activeColor: primaryColor,
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 24),
-
                         // Start Trip Button
                         SizedBox(
                           width: 280,
                           height: 60,
                           child: ElevatedButton(
-                            onPressed: () {},
+                            onPressed: () {
+                              setState(() {
+                                isTripActive = !isTripActive;
+                              });
+                              if (isTripActive) {
+                                _startLiveLocation();
+                              } else {
+                                _stopLiveLocation();
+                              }
+                            },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: primaryColor,
+                              backgroundColor: isTripActive ? Colors.red : primaryColor,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                               elevation: 8,
-                              shadowColor: primaryColor.withOpacity(0.3),
+                              shadowColor: (isTripActive ? Colors.red : primaryColor).withOpacity(0.3),
                             ),
-                            child: const Row(
+                            child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.directions_bus, color: Colors.white),
-                                SizedBox(width: 12),
-                                Text('START TRIP', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                                const Icon(Icons.directions_bus, color: Colors.white),
+                                const SizedBox(width: 12),
+                                Text(
+                                  isTripActive ? 'STOP TRIP' : 'START TRIP',
+                                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                                ),
                               ],
                             ),
                           ),
@@ -316,7 +384,7 @@ class _DriverDashboardState extends State<DriverDashboard> {
             children: [
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.example.bus_app',
+                userAgentPackageName: 'com.example.jjns',
               ),
               MarkerLayer(
                 markers: [
