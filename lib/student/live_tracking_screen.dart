@@ -22,7 +22,6 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   final LatLng _busLocation = const LatLng(9.5150, 76.5600);
 
   LatLng? _currentPosition;
-  bool _isLoadingLocation = true;
 
   @override
   void initState() {
@@ -42,7 +41,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
           content: Text('Location services are disabled.'),
         ));
       }
-      setState(() => _isLoadingLocation = false);
+      if (mounted) setState(() {});
       return;
     }
 
@@ -55,7 +54,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
             content: Text('Location permissions are denied'),
           ));
         }
-        setState(() => _isLoadingLocation = false);
+          if (mounted) setState(() {});
         return;
       }
     }
@@ -67,7 +66,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
               'Location permissions are permanently denied, we cannot request permissions.'),
         ));
       }
-      setState(() => _isLoadingLocation = false);
+      if (mounted) setState(() {});
       return;
     }
 
@@ -77,14 +76,13 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
       final position = await Geolocator.getCurrentPosition();
       setState(() {
         _currentPosition = LatLng(position.latitude, position.longitude);
-        _isLoadingLocation = false;
       });
       
       // Once we have the location, fit bounds to show all markers
       _fitBounds();
     } catch (e) {
       debugPrint("Error getting location: $e");
-      setState(() => _isLoadingLocation = false);
+      if (mounted) setState(() {});
     }
   }
 
@@ -110,7 +108,6 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       extendBodyBehindAppBar: true,

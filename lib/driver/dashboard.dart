@@ -20,7 +20,6 @@ class _DriverDashboardState extends State<DriverDashboard> {
   final LatLng _stopLocation = const LatLng(9.5042, 76.5521);
 
   LatLng? _currentPosition;
-  bool _isLoadingLocation = true;
 
   @override
   void initState() {
@@ -40,7 +39,7 @@ class _DriverDashboardState extends State<DriverDashboard> {
           content: Text('Location services are disabled.'),
         ));
       }
-      setState(() => _isLoadingLocation = false);
+      if (mounted) setState(() {});
       return;
     }
 
@@ -53,7 +52,7 @@ class _DriverDashboardState extends State<DriverDashboard> {
             content: Text('Location permissions are denied'),
           ));
         }
-        setState(() => _isLoadingLocation = false);
+          if (mounted) setState(() {});
         return;
       }
     }
@@ -65,7 +64,7 @@ class _DriverDashboardState extends State<DriverDashboard> {
               'Location permissions are permanently denied, we cannot request permissions.'),
         ));
       }
-      setState(() => _isLoadingLocation = false);
+      if (mounted) setState(() {});
       return;
     }
 
@@ -75,14 +74,13 @@ class _DriverDashboardState extends State<DriverDashboard> {
       final position = await Geolocator.getCurrentPosition();
       setState(() {
         _currentPosition = LatLng(position.latitude, position.longitude);
-        _isLoadingLocation = false;
       });
 
       // Once we have the location, fit bounds to show all markers
       _fitBounds();
     } catch (e) {
       debugPrint("Error getting location: $e");
-      setState(() => _isLoadingLocation = false);
+      if (mounted) setState(() {});
     }
   }
 

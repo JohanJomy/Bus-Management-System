@@ -14,8 +14,6 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
 
   void login() {
     // Allow empty login for testing
-    final id = idController.text.isNotEmpty ? idController.text : '202400123';
-    
     Navigator.pushReplacementNamed(context, '/home');
   }
 
