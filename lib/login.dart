@@ -6,201 +6,173 @@ class RoleSelectionScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Colors from tailwind config
-    const navyDeep = Color(0xFF04070D); // navy-deep
-    const primaryBlue = Color(0xFF3B82F6); // primary
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    // Tailwind Colors
+    final bgColor = isDark ? const Color(0xFF101922) : const Color(0xFFF6F7F8);
+    final cardColor = isDark ? const Color(0xFF192633) : Colors.white;
+    final primaryColor = const Color(0xFF137FEC);
+    final borderColor = isDark ? const Color(0xFF324D67) : const Color(0xFFE2E8F0);
+    final textColor = isDark ? const Color(0xFFF1F5F9) : const Color(0xFF0F172A);
+    final subtitleColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final iconColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF94A3B8);
 
     return Scaffold(
-      backgroundColor: navyDeep,
-      body: Stack(
-        children: [
-          // Background Blurs
-          Positioned(
-            top: -100,
-            left: -100,
-            child: _buildBlurCircle(const Color(0xFF2563EB), 400),
-          ),
-          Positioned(
-            bottom: -100,
-            right: -100,
-            child: _buildBlurCircle(const Color(0xFF3B82F6), 400),
-          ),
-
-          // Main Content
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40), // px-10
+      backgroundColor: bgColor,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            child: Container(
+              width: double.infinity,
+              constraints: const BoxConstraints(maxWidth: 430),
+              margin: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const SizedBox(height: 80), // Header spacing
-                  
-                  // Header
-                  Center(
-                    child: Column(
-                      children: [
-                        Opacity(
-                          opacity: 0.9,
-                          child: Icon(
-                            Icons.directions_bus,
-                            size: 48,
-                            color: primaryBlue,
-                          ),
-                        ),
-                        const SizedBox(height: 40),
-                        Text(
-                           "BUSCONNECT",
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.9),
-                            fontSize: 20, // text-xl
-                            fontWeight: FontWeight.w300, // font-light
-                            letterSpacing: 3.0, // tracking-ultra-wide
-                            fontFamily: 'Inter',
-                          ),
-                        ),
-                      ],
+                  // Logo
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: primaryColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(
+                      Icons.directions_bus,
+                      color: primaryColor,
+                      size: 48,
                     ),
                   ),
+                  const SizedBox(height: 32),
 
-                  const Spacer(flex: 1),
+                  // Header
+                  Text(
+                    "BUSCONNECT",
+                    style: TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2.0,
+                      color: textColor,
+                      height: 1.1,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Select your role to continue",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: subtitleColor,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                  const SizedBox(height: 48),
 
-                  // Buttons
-                  // Student Button
-                  _buildGlassButton(
+                  // Role Buttons
+                  _buildRoleButton(
                     context,
-                    icon: Icons.person,
-                    label: "STUDENT",
+                    label: "Student",
+                    icon: Icons.person_outline,
                     onTap: () => Navigator.pushNamed(context, '/student/login'),
-                    primaryBlue: primaryBlue,
+                    cardColor: cardColor,
+                    borderColor: borderColor,
+                    textColor: textColor,
+                    iconColor: iconColor,
                   ),
                   
-                  const SizedBox(height: 16), // gap-4
+                  const SizedBox(height: 16),
 
-                  // Driver Button
-                  _buildGlassButton(
+                  _buildRoleButton(
                     context,
-                    icon: Icons.airline_seat_recline_normal,
-                    label: "DRIVER",
+                    label: "Driver",
+                    icon: Icons.airline_seat_recline_normal_outlined,
                     onTap: () => Navigator.pushNamed(context, '/driver/login'),
-                    primaryBlue: primaryBlue,
+                    cardColor: cardColor,
+                    borderColor: borderColor,
+                    textColor: textColor,
+                    iconColor: iconColor,
                   ),
                   
-                  const SizedBox(height: 16), // gap-4
+                  const SizedBox(height: 16),
 
-                  // Admin Button
-                  _buildGlassButton(
+                  _buildRoleButton(
                     context,
-                    icon: Icons.admin_panel_settings,
-                    label: "ADMIN",
+                    label: "Admin",
+                    icon: Icons.admin_panel_settings_outlined,
                     onTap: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => const DashboardScreen()),
                       );
                     },
-                    primaryBlue: primaryBlue,
+                    cardColor: cardColor,
+                    borderColor: borderColor,
+                    textColor: textColor,
+                    iconColor: iconColor,
                   ),
-
-                  const Spacer(flex: 2),
-
-                  // Footer
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _buildFooterLink("HELP"),
-                      const SizedBox(width: 32),
-                      _buildFooterLink("PRIVACY"),
-                      const SizedBox(width: 32),
-                      _buildFooterLink("LEGAL"),
-                    ],
-                  ),
-                  const SizedBox(height: 40),
                   
-                  // Home Indicator
-                  Center(
-                    child: Container(
-                      width: 128,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 48),
                 ],
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBlurCircle(Color color, double size) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.05),
-        shape: BoxShape.circle,
-      ),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          boxShadow: [BoxShadow(color: color, blurRadius: 120, spreadRadius: 0)],
         ),
       ),
     );
   }
 
-  Widget _buildGlassButton(BuildContext context, {required IconData icon, required String label, required VoidCallback onTap, required Color primaryBlue}) {
+  Widget _buildRoleButton(
+    BuildContext context, {
+    required String label,
+    required IconData icon,
+    required VoidCallback onTap,
+    required Color cardColor,
+    required Color borderColor,
+    required Color textColor,
+    required Color iconColor,
+  }) {
     return Container(
+      height: 72,
       decoration: BoxDecoration(
+        color: cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
-        color: Colors.white.withOpacity(0.02),
+        border: Border.all(color: borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(16),
-          splashColor: Colors.white.withOpacity(0.05),
-          highlightColor: Colors.white.withOpacity(0.02),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Row(
               children: [
-                Container(
-                  margin: const EdgeInsets.only(right: 20),
-                  child: Icon(icon, color: primaryBlue, size: 24),
-                ),
+                Icon(icon, size: 28, color: iconColor),
+                const SizedBox(width: 16),
                 Text(
                   label,
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.7),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 1.5, // tracking-button
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: textColor,
+                    fontFamily: 'Inter',
                   ),
                 ),
+                const Spacer(),
+                Icon(Icons.arrow_forward_ios, size: 16, color: iconColor.withOpacity(0.5)),
               ],
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildFooterLink(String text) {
-    return Text(
-      text,
-      style: TextStyle(
-        color: Colors.white.withOpacity(0.2),
-        fontSize: 9,
-        fontWeight: FontWeight.w500,
-        letterSpacing: 1.5, // tracking-widest
       ),
     );
   }

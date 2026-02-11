@@ -162,7 +162,7 @@ class HomeContent extends StatelessWidget {
                           children: [
                             Text('ARRIVAL', style: TextStyle(color: subTextColor, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
                             const SizedBox(height: 4),
-                            Text('07:30 AM', style: TextStyle(color: textColor, fontSize: 20, fontWeight: FontWeight.bold)),
+                            Text('08:30 AM', style: TextStyle(color: textColor, fontSize: 20, fontWeight: FontWeight.bold)),
                           ],
                         ),
                       ),
@@ -220,9 +220,9 @@ class HomeContent extends StatelessWidget {
           const SizedBox(height: 16),
           Row(
             children: [
-              Expanded(child: _buildInfoCard(context, Icons.person, 'Driver', 'John Smith', Colors.blue)),
+              Expanded(child: _buildInfoCard(context, Icons.person, 'Driver', 'Kuriakose', Colors.blue)),
               const SizedBox(width: 16),
-              Expanded(child: _buildInfoCard(context, Icons.alt_route, 'Route', 'A-12 North', Colors.purple)),
+              Expanded(child: _buildInfoCard(context, Icons.alt_route, 'Route', 'Thiruvalla', Colors.purple)),
             ],
           ),
           const SizedBox(height: 16),

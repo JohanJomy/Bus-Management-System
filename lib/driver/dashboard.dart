@@ -1,4 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 
 class DriverDashboard extends StatefulWidget {
   const DriverDashboard({super.key});
@@ -9,6 +14,98 @@ class DriverDashboard extends StatefulWidget {
 
 class _DriverDashboardState extends State<DriverDashboard> {
   bool isLiveSharing = true;
+  final MapController _mapController = MapController();
+
+  // Saintgits College of Engineering (Approximate)
+  final LatLng _stopLocation = const LatLng(9.5042, 76.5521);
+
+  LatLng? _currentPosition;
+  bool _isLoadingLocation = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _determinePosition();
+  }
+
+  Future<void> _determinePosition() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    // Test if location services are enabled.
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Location services are disabled.'),
+        ));
+      }
+      setState(() => _isLoadingLocation = false);
+      return;
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Location permissions are denied'),
+          ));
+        }
+        setState(() => _isLoadingLocation = false);
+        return;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text(
+              'Location permissions are permanently denied, we cannot request permissions.'),
+        ));
+      }
+      setState(() => _isLoadingLocation = false);
+      return;
+    }
+
+    // When we reach here, permissions are granted and we can
+    // continue accessing the position of the device.
+    try {
+      final position = await Geolocator.getCurrentPosition();
+      setState(() {
+        _currentPosition = LatLng(position.latitude, position.longitude);
+        _isLoadingLocation = false;
+      });
+
+      // Once we have the location, fit bounds to show all markers
+      _fitBounds();
+    } catch (e) {
+      debugPrint("Error getting location: $e");
+      setState(() => _isLoadingLocation = false);
+    }
+  }
+
+  void _fitBounds() {
+    List<LatLng> points = [_stopLocation];
+    if (_currentPosition != null) {
+      points.add(_currentPosition!);
+    }
+
+    if (points.length > 1) {
+      try {
+        _mapController.fitCamera(
+          CameraFit.coordinates(
+            coordinates: points,
+            padding: const EdgeInsets.all(80),
+          ),
+        );
+      } catch (e) {
+        // Sometimes map controller isn't ready
+        debugPrint("Map controller error: $e");
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -195,7 +292,7 @@ class _DriverDashboardState extends State<DriverDashboard> {
       height: 340, // Aspect Ratio approx 1:1
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: Colors.grey[300],
+        color: isDark ? const Color(0xFF1E293B) : Colors.grey[300],
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
            BoxShadow(color: primary.withOpacity(0.05), blurRadius: 20, spreadRadius: 5),
@@ -204,32 +301,74 @@ class _DriverDashboardState extends State<DriverDashboard> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // Map Image Placeholder
-          Image.network(
-            'https://lh3.googleusercontent.com/aida-public/AB6AXuCuaeFDU5bDXl3z2FoAgbM8mV5tiN494vZgXyUOowXVJKJECcsBixPUWJ2h0Ei1drEhmt7fVCFveY8ZrCXWPONg_EqaI0sl2k8Vgap3Y43q8Vf43W7smAPFsKv2xp6udgGbQwQ6F02J9VzmoAWqyFrc6CSRe8gCWcIbtg_SkvKXpNwcqdsXPiFHwT90dVeij48QR6hd2RGX7YcMIcDyHlmEQzc266JDNycrSqjd_B81jTRNv_mxlA7ScKkiLKf_wogqAFd57au47vzm',
-            fit: BoxFit.cover,
+          // Flutter Map Implementation
+          FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter: _stopLocation,
+              initialZoom: 13.0,
+              onMapReady: () {
+                 if (_currentPosition != null) {
+                   _fitBounds();
+                 }
+              }
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.example.bus_app',
+              ),
+              MarkerLayer(
+                markers: [
+                  // Stop Marker (Saintgits)
+                  Marker(
+                    point: _stopLocation,
+                    width: 80,
+                    height: 80,
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.green,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                          child: const Icon(Icons.school, size: 20, color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Current Driver/Bus Marker
+                  if (_currentPosition != null)
+                    Marker(
+                      point: _currentPosition!,
+                      width: 60,
+                      height: 60,
+                      child: const Column(
+                        children: [
+                           CircleAvatar(
+                            radius: 20,
+                            backgroundColor: Color(0xFF137FEC),
+                            child: Icon(Icons.directions_bus, color: Colors.white, size: 20),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ],
           ),
           
-          // Overlay Gradient
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Colors.transparent, Colors.black.withOpacity(0.4)],
-              ),
-            ),
-          ),
-
           // Map Control Buttons
           Positioned(
             bottom: 16,
             right: 16,
             child: Column(
               children: [
-                _buildMapBtn(Icons.my_location, primary, isDark),
+                _buildMapBtn(Icons.my_location, primary, isDark, _fitBounds),
                 const SizedBox(height: 8),
-                _buildMapBtn(Icons.layers, isDark ? Colors.white : Colors.black87, isDark),
+                _buildMapBtn(Icons.layers, isDark ? Colors.white : Colors.black87, isDark, () {}),
               ],
             ),
           ),
@@ -263,17 +402,10 @@ class _DriverDashboardState extends State<DriverDashboard> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('UPCOMING', style: TextStyle(color: primary, fontSize: 10, fontWeight: FontWeight.bold)),
-                        Text('Saintgits College of Engineering', style: TextStyle(color: textPrim, fontSize: 14, fontWeight: FontWeight.bold)),
+                        Text('Saintgits College', style: TextStyle(color: textPrim, fontSize: 14, fontWeight: FontWeight.bold)),
                         Text('10 km • 25 mins', style: TextStyle(color: textSec, fontSize: 12)),
                       ],
                     ),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text('8:45', style: TextStyle(color: textPrim, fontSize: 20, fontWeight: FontWeight.bold)),
-                      Text('ETA', style: TextStyle(color: textSec, fontSize: 10, fontWeight: FontWeight.w600)),
-                    ],
                   ),
                 ],
               ),
@@ -284,16 +416,19 @@ class _DriverDashboardState extends State<DriverDashboard> {
     );
   }
   
-  Widget _buildMapBtn(IconData icon, Color color, bool isDark) {
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)],
+  Widget _buildMapBtn(IconData icon, Color color, bool isDark, VoidCallback onPressed) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E293B) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)],
+        ),
+        child: Icon(icon, color: color, size: 22),
       ),
-      child: Icon(icon, color: color, size: 22),
     );
   }
 

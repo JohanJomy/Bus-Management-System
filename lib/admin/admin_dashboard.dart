@@ -1,6 +1,5 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -101,7 +100,7 @@ class Header extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text("Tom Das", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                  Text("Deepthi C. Nair", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                   Text("Admin", style: TextStyle(fontSize: 10, color: Color(0xFF137FEC), fontWeight: FontWeight.bold)),
                 ],
               ),

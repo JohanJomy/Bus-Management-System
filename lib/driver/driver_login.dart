@@ -9,209 +9,267 @@ class DriverLoginScreen extends StatefulWidget {
 
 class _DriverLoginScreenState extends State<DriverLoginScreen> {
   final _busNumberController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isPasswordVisible = false;
 
   void _handleLogin() {
-    // In a real app, validate bus number here
+    // Navigate to driver dashboard
     Navigator.pushReplacementNamed(context, '/driver');
   }
 
   @override
+  void dispose() {
+    _busNumberController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Colors from the template
-    const bgColor = Color(0xFF0A1128); // navy-deep
-    const iconBgColor = Color(0xFF152243); // navy-light
-    const textMuted = Color(0xFF8E94A5); // muted-gray
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    // Tailwind Colors
+    final bgColor = isDark ? const Color(0xFF101922) : const Color(0xFFF6F7F8);
+    final cardColor = isDark ? const Color(0xFF192633) : Colors.white;
+    final primaryColor = const Color(0xFF137FEC);
+    final borderColor = isDark ? const Color(0xFF324D67) : const Color(0xFFE2E8F0);
+    final iconColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF94A3B8); // slate-400
+    final textColor = isDark ? const Color(0xFFF1F5F9) : const Color(0xFF0F172A); // slate-100/900
+    final subtitleColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B); // slate-400/500
+    final placeholderColor = isDark ? const Color(0xFF92ADC9) : const Color(0xFF94A3B8);
 
     return Scaffold(
       backgroundColor: bgColor,
       body: SafeArea(
-        child: Column(
-          children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              child: Row(
+        child: Center(
+          child: SingleChildScrollView(
+            child: Container(
+              width: double.infinity,
+              constraints: const BoxConstraints(maxWidth: 430),
+              margin: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back_ios_new, color: textMuted),
-                    onPressed: () => Navigator.pop(context),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    style: IconButton.styleFrom(
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                   // Back Button
+                  Align(
+                    alignment: Alignment.topLeft,
+                    child: IconButton(
+                      icon: Icon(Icons.arrow_back_ios_new, color: iconColor, size: 20),
+                      onPressed: () => Navigator.pop(context),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
                     ),
                   ),
-                ],
-              ),
-            ),
+                  const SizedBox(height: 24),
 
-            Expanded(
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 32),
-                  child: Column(
+                  // Logo
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: primaryColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(
+                      Icons.directions_bus,
+                      color: primaryColor,
+                      size: 48,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // Header
+                  Text(
+                    "Driver Portal",
+                    style: TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.5,
+                      color: textColor,
+                      height: 1.1,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Enter your bus number and credentials.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: subtitleColor,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+
+                  // Login Form
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const SizedBox(height: 40),
-                      
-                      // Bus Icon Container
-                      Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          color: iconBgColor,
-                          borderRadius: BorderRadius.circular(24), // rounded-3xl
-                          border: Border.all(color: Colors.white.withOpacity(0.1)),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.directions_bus,
-                          color: Colors.white,
-                          size: 40,
-                        ),
-                      ),
-                      
-                      const SizedBox(height: 48),
-
-                      // Title & Subtitle
-                      const Text(
-                        "Driver Login",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 30,
-                          fontWeight: FontWeight.w300, // font-light
-                          letterSpacing: -0.5,
+                      // Bus Number Input
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                        child: Text(
+                          "Bus Number",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            fontFamily: 'Inter',
+                            color: textColor,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 8),
-                      const Text(
-                        "Enter assigned bus number",
-                        style: TextStyle(
-                          color: textMuted,
-                          fontSize: 14,
-                          fontWeight: FontWeight.normal,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-
-                      const SizedBox(height: 48),
-
-                      // Input Field
-                      SizedBox(
-                        width: 280,
-                        child: TextField(
-                          controller: _busNumberController,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 60, // text-6xl
-                            fontWeight: FontWeight.w300,
-                            letterSpacing: -1.5, // tracking-tighter
-                          ),
-                          keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
-                            hintText: "000",
-                            hintStyle: TextStyle(
-                              color: Colors.white.withOpacity(0.1),
-                            ),
-                            enabledBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Colors.white.withOpacity(0.2),
-                                width: 2,
-                              ),
-                            ),
-                            focusedBorder: const UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Colors.white,
-                                width: 2,
-                              ),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(vertical: 16),
-                          ),
-                          textInputAction: TextInputAction.go,
-                          onSubmitted: (_) => _handleLogin(),
-                        ),
-                      ),
-
-                      const SizedBox(height: 40), // pt-4 roughly
-
-                      // Forward Button
                       Container(
+                        height: 56,
                         decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.white.withOpacity(0.2),
-                              blurRadius: 40,
-                              spreadRadius: 0,
+                          color: cardColor,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: borderColor),
+                        ),
+                        child: Row(
+                          children: [
+                            const SizedBox(width: 16),
+                            Icon(Icons.directions_bus_outlined, color: iconColor, size: 22),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: TextField(
+                                controller: _busNumberController,
+                                style: TextStyle(color: textColor, fontWeight: FontWeight.w500),
+                                keyboardType: TextInputType.number, 
+                                decoration: InputDecoration(
+                                  border: InputBorder.none,
+                                  hintText: "e.g. 42B",
+                                  hintStyle: TextStyle(color: placeholderColor),
+                                  isDense: true,
+                                ),
+                              ),
                             ),
+                            const SizedBox(width: 16),
                           ],
                         ),
-                        child: Material(
-                          color: Colors.white,
-                          shape: const CircleBorder(),
-                          clipBehavior: Clip.antiAlias,
-                          child: InkWell(
-                            onTap: _handleLogin,
-                            child: const SizedBox(
-                              width: 80,
-                              height: 80,
-                              child: Icon(
-                                Icons.arrow_forward,
-                                color: bgColor, // navy-deep
-                                size: 30,
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Password Input
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                        child: Text(
+                          "Password",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            fontFamily: 'Inter',
+                            color: textColor,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: cardColor,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: borderColor),
+                        ),
+                        child: Row(
+                          children: [
+                            const SizedBox(width: 16),
+                            Icon(Icons.lock_outline, color: iconColor, size: 22),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: TextField(
+                                controller: _passwordController,
+                                obscureText: !_isPasswordVisible,
+                                style: TextStyle(color: textColor, fontWeight: FontWeight.w500),
+                                decoration: InputDecoration(
+                                  border: InputBorder.none,
+                                  hintText: "••••••••",
+                                  hintStyle: TextStyle(color: placeholderColor),
+                                  isDense: true,
+                                ),
                               ),
+                            ),
+                            IconButton(
+                              icon: Icon(
+                                _isPasswordVisible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                                color: iconColor,
+                                size: 22,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _isPasswordVisible = !_isPasswordVisible;
+                                });
+                              },
+                            ),
+                            const SizedBox(width: 4),
+                          ],
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 24),
+                      
+                      // Login Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 56,
+                        child: ElevatedButton(
+                          onPressed: _handleLogin,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primaryColor,
+                            foregroundColor: Colors.white,
+                            elevation: 4,
+                            shadowColor: primaryColor.withOpacity(0.4),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            "Start Shift",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'Inter',
                             ),
                           ),
                         ),
                       ),
                     ],
                   ),
-                ),
-              ),
-            ),
 
-            // Footer
-            Padding(
-              padding: const EdgeInsets.only(bottom: 48, top: 24),
-              child: TextButton(
-                onPressed: () {},
-                child: const Text(
-                  "HELP & SUPPORT",
-                  style: TextStyle(
-                    color: textMuted,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 2.5, // tracking-[0.2em]
+                  const SizedBox(height: 32),
+
+                  // Forgot Password / Support
+                  TextButton(
+                    onPressed: () {},
+                    child: Text(
+                      "Having trouble?",
+                      style: TextStyle(
+                        color: primaryColor,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
                   ),
-                ),
+                  
+                  // Home Indicator spacer if needed
+                  const SizedBox(height: 16),
+                  Container(
+                    width: 128,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.grey[800] : Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  )
+                ],
               ),
             ),
-
-            // Home Indicator (Visual only, system handles this usually, but following design)
-            Container(
-              width: 128,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 8),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
-  }
-  
-  @override
-  void dispose() {
-    _busNumberController.dispose();
-    super.dispose();
   }
 }
