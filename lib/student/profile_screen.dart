@@ -51,7 +51,7 @@ class ProfileScreen extends StatelessWidget {
                       shape: BoxShape.circle,
                       border: Border.all(color: const Color(0xFF137FEC), width: 3),
                       boxShadow: [
-                        BoxShadow(color: const Color(0xFF137FEC).withOpacity(0.3), blurRadius: 15)
+                            BoxShadow(color: Color(0xFF137FEC).withOpacity(0.3), blurRadius: 15)
                       ],
                     ),
                     child: CircleAvatar(
@@ -112,7 +112,7 @@ class ProfileScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: const Color(0xFF137FEC).withOpacity(0.1),
+              color: Color(0xFF137FEC).withOpacity(0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: const Color(0xFF137FEC), size: 22),

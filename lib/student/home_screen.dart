@@ -149,7 +149,7 @@ class HomeContent extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF137FEC).withOpacity(0.1),
+                    color: Color(0xFF137FEC).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Text(
@@ -253,7 +253,7 @@ class HomeContent extends StatelessWidget {
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: [BoxShadow(color: const Color(0xFF137FEC).withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))],
+                boxShadow: [BoxShadow(color: Color(0xFF137FEC).withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))],
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,

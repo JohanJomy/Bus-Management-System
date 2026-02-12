@@ -101,7 +101,7 @@ class FeePaymentScreen extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     elevation: 5,
-                    shadowColor: const Color(0xFF137FEC).withOpacity(0.4),
+                    shadowColor: Color(0xFF137FEC).withOpacity(0.4),
                   ),
                   child: const Text('Pay ₹4500.00 Now', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),

@@ -345,7 +345,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF137FEC).withOpacity(0.1),
+                          color: Color(0xFF137FEC).withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Icon(Icons.directions_bus_filled, color: Color(0xFF137FEC)),
