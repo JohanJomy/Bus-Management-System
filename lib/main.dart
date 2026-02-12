@@ -10,6 +10,8 @@ import 'student/restricted_screen.dart';
 import 'student/profile_screen.dart';
 import 'driver/dashboard.dart';
 import 'driver/driver_login.dart';
+import 'admin/admin_login.dart';
+import 'admin/admin_dashboard.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,13 +38,17 @@ class BusApp extends StatelessWidget {
         brightness: Brightness.light,
         scaffoldBackgroundColor: const Color(0xFFF8FAFC), // Slate-50
         primaryColor: const Color(0xFF137FEC), // Your Primary Blue
-        fontFamily: 'Inter', // Ensure you have added this font to pubspec.yaml
+        fontFamily: 'Inter',
         useMaterial3: true,
         appBarTheme: const AppBarTheme(
           backgroundColor: Colors.transparent,
           elevation: 0,
           iconTheme: IconThemeData(color: Color(0xFF0F172A)),
-          titleTextStyle: TextStyle(color: Color(0xFF0F172A), fontSize: 18, fontWeight: FontWeight.bold),
+          titleTextStyle: TextStyle(
+            color: Color(0xFF0F172A), 
+            fontSize: 18, 
+            fontWeight: FontWeight.bold
+          ),
         ),
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF137FEC),
@@ -62,7 +68,11 @@ class BusApp extends StatelessWidget {
           backgroundColor: Colors.transparent,
           elevation: 0,
           iconTheme: IconThemeData(color: Colors.white),
-          titleTextStyle: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+          titleTextStyle: TextStyle(
+            color: Colors.white, 
+            fontSize: 18, 
+            fontWeight: FontWeight.bold
+          ),
         ),
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF137FEC),
@@ -76,6 +86,8 @@ class BusApp extends StatelessWidget {
       routes: {
         '/': (context) => const RoleSelectionScreen(),
         '/student/login': (context) => const StudentLoginScreen(),
+        '/admin/login': (context) => const AdminLoginScreen(),
+        '/admin/dashboard': (context) => const DashboardScreen(),
         '/home': (context) => const StudentHomeScreen(),
         '/tracking': (context) => const LiveTrackingScreen(),
         '/fees': (context) => const FeePaymentScreen(),

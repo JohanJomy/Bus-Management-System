@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'admin/admin_dashboard.dart';
 
 class RoleSelectionScreen extends StatelessWidget {
   const RoleSelectionScreen({super.key});
@@ -8,7 +7,7 @@ class RoleSelectionScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
-    // Tailwind Colors
+    // Theme Colors
     final bgColor = isDark ? const Color(0xFF101922) : const Color(0xFFF6F7F8);
     final cardColor = isDark ? const Color(0xFF192633) : Colors.white;
     final primaryColor = const Color(0xFF137FEC);
@@ -30,7 +29,7 @@ class RoleSelectionScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo
+                  // --- LOGO SECTION ---
                   Container(
                     width: 80,
                     height: 80,
@@ -46,7 +45,7 @@ class RoleSelectionScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 32),
 
-                  // Header
+                  // --- HEADER SECTION ---
                   Text(
                     "BUSCONNECT",
                     style: TextStyle(
@@ -70,7 +69,9 @@ class RoleSelectionScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 48),
 
-                  // Role Buttons
+                  // --- ROLE BUTTONS ---
+
+                  // 1. STUDENT BUTTON
                   _buildRoleButton(
                     context,
                     label: "Student",
@@ -84,6 +85,7 @@ class RoleSelectionScreen extends StatelessWidget {
                   
                   const SizedBox(height: 16),
 
+                  // 2. DRIVER BUTTON (Restored)
                   _buildRoleButton(
                     context,
                     label: "Driver",
@@ -97,16 +99,12 @@ class RoleSelectionScreen extends StatelessWidget {
                   
                   const SizedBox(height: 16),
 
+                  // 3. ADMIN BUTTON (Now leads to the Login Screen)
                   _buildRoleButton(
                     context,
                     label: "Admin",
                     icon: Icons.admin_panel_settings_outlined,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const DashboardScreen()),
-                      );
-                    },
+                    onTap: () => Navigator.pushNamed(context, '/admin/login'),
                     cardColor: cardColor,
                     borderColor: borderColor,
                     textColor: textColor,
@@ -123,6 +121,7 @@ class RoleSelectionScreen extends StatelessWidget {
     );
   }
 
+  // Helper widget to build the consistent button style
   Widget _buildRoleButton(
     BuildContext context, {
     required String label,
