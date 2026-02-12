@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:firebase_database/firebase_database.dart';
 
 class LiveTrackingScreen extends StatefulWidget {
   const LiveTrackingScreen({super.key});
@@ -18,8 +19,13 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   // Saintgits College of Engineering (Approximate)
   final LatLng _stopLocation = const LatLng(9.5042, 76.5521); 
   
-  // Simulated Bus location (nearby)
-  final LatLng _busLocation = const LatLng(9.5150, 76.5600);
+  // Live bus location fetched from Realtime Database
+  LatLng? _busLocation;
+
+  // Polling timer for fetching bus location
+  Timer? _busLocationTimer;
+
+  bool _isBusActive = false;
 
   LatLng? _currentPosition;
 
@@ -27,6 +33,13 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   void initState() {
     super.initState();
     _determinePosition();
+    _startBusLocationPolling();
+  }
+
+  @override
+  void dispose() {
+    _busLocationTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _determinePosition() async {
@@ -87,7 +100,10 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   }
 
   void _fitBounds() {
-    List<LatLng> points = [_busLocation, _stopLocation];
+    List<LatLng> points = [_stopLocation];
+    if (_busLocation != null) {
+      points.add(_busLocation!);
+    }
     if (_currentPosition != null) {
       points.add(_currentPosition!);
     }
@@ -104,6 +120,49 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
       // Sometimes map controller isn't ready
       debugPrint("Map controller error: $e");
     }
+  }
+
+  void _startBusLocationPolling() {
+    _busLocationTimer?.cancel();
+
+    final DatabaseReference ref =
+        FirebaseDatabase.instance.ref('buses/13/location');
+
+    _busLocationTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
+      try {
+        final DataSnapshot snapshot = await ref.get();
+        if (!snapshot.exists) return;
+
+        final value = snapshot.value;
+        if (value is! Map) return;
+
+        final Map data = value;
+        final String status = (data['status'] ?? '').toString();
+
+        // Only update marker when the trip is active
+        if (status != 'active') {
+          if (!mounted) return;
+          setState(() {
+            _isBusActive = false;
+          });
+          return;
+        }
+
+        final latRaw = data['lat'];
+        final lngRaw = data['lng'];
+        if (latRaw is num && lngRaw is num) {
+          final LatLng newLocation = LatLng(latRaw.toDouble(), lngRaw.toDouble());
+
+          if (!mounted) return;
+          setState(() {
+            _busLocation = newLocation;
+            _isBusActive = true;
+          });
+        }
+      } catch (e) {
+        debugPrint('Error fetching bus location: $e');
+      }
+    });
   }
 
   @override
@@ -139,22 +198,23 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
               MarkerLayer(
                 markers: [
                   // Bus Marker
-                  Marker(
-                    point: _busLocation,
-                    width: 60,
-                    height: 60,
-                    child: const Column(
-                      children: [
-                         CircleAvatar(
-                          radius: 20,
-                          backgroundColor: Color(0xFF137FEC),
-                          child: Icon(Icons.directions_bus, color: Colors.white, size: 20),
-                        ),
-                        SizedBox(height: 2),
-                        Text("Bus", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
-                      ],
+                  if (_busLocation != null && _isBusActive)
+                    Marker(
+                      point: _busLocation!,
+                      width: 60,
+                      height: 60,
+                      child: const Column(
+                        children: [
+                           CircleAvatar(
+                            radius: 20,
+                            backgroundColor: Color(0xFF137FEC),
+                            child: Icon(Icons.directions_bus, color: Colors.white, size: 20),
+                          ),
+                          SizedBox(height: 2),
+                          Text("Bus", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
+                        ],
+                      ),
                     ),
-                  ),
                   // Stop Marker (Saintgits)
                   Marker(
                     point: _stopLocation,
@@ -235,14 +295,20 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: const [BoxShadow(blurRadius: 4, color: Colors.black12)],
                           ),
-                          child: const Row(
+                          child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.circle, size: 8, color: Colors.green),
-                              SizedBox(width: 6),
+                              Icon(
+                                Icons.circle,
+                                size: 8,
+                                color: _isBusActive ? Colors.green : Colors.grey,
+                              ),
+                              const SizedBox(width: 6),
                               Text(
-                                "Live • Arriving in 15 mins",
-                                style: TextStyle(
+                                _isBusActive
+                                    ? 'Live • Bus active'
+                                    : 'Offline • Trip not active',
+                                style: const TextStyle(
                                   fontWeight: FontWeight.w600,
                                   fontSize: 12,
                                   color: Colors.black87,
