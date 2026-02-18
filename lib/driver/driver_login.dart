@@ -29,7 +29,7 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
     // Tailwind Colors
-    final bgColor = isDark ? const Color(0xFF101922) : const Color(0xFFF6F7F8);
+    final bgColor = isDark ? const Color(0xFF101922) : const Color(0xFFF6F6F8);
     final cardColor = isDark ? const Color(0xFF192633) : Colors.white;
     final primaryColor = const Color(0xFF137FEC);
     final borderColor = isDark ? const Color(0xFF324D67) : const Color(0xFFE2E8F0);

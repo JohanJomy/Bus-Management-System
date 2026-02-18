@@ -186,7 +186,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
 
     // Theme Colors
     final Color bgColor =
-        isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
+        isDark ? const Color(0xFF0F172A) : const Color(0xFFF6F6F8);
     final Color textPrim =
         isDark ? const Color(0xFFF1F5F9) : const Color(0xFF0F172A);
     final Color textSec =

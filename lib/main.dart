@@ -36,7 +36,7 @@ class BusApp extends StatelessWidget {
       // Light Theme
       theme: ThemeData(
         brightness: Brightness.light,
-        scaffoldBackgroundColor: const Color(0xFFF8FAFC), // Slate-50
+        scaffoldBackgroundColor: const Color(0xFFF6F6F8),
         primaryColor: const Color(0xFF137FEC), // Your Primary Blue
         fontFamily: 'Inter',
         useMaterial3: true,

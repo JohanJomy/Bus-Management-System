@@ -19,11 +19,11 @@ class FleetManagementScreen extends StatelessWidget {
                 children: [
                   const Text(
                     "Bus & Fleet Management",
-                    style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900, color: Color.fromARGB(255, 255, 255, 255), letterSpacing: -0.5),
+                    style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900, color: Color(0xFF1E293B), letterSpacing: -0.5),
                   ),
                   const SizedBox(height: 4),
                   Text("Manage your active fleet and monitor performance metrics.",
-                      style: TextStyle(color: const Color.fromARGB(255, 235, 230, 230), fontSize: 14)),
+                      style: TextStyle(color: const Color(0xFF64748B), fontSize: 14)),
                 ],
               ),
               Row(

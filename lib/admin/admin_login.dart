@@ -16,12 +16,23 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? const Color(0xFFF1F5F9) : const Color(0xFF0F172A);
-    final subTextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    const textColor = Color(0xFF1E293B);
+    const subTextColor = Color(0xFF64748B);
 
-    return Scaffold(
-      body: SafeArea(
+    return Theme(
+      data: ThemeData(
+        brightness: Brightness.light,
+        scaffoldBackgroundColor: const Color(0xFFF6F6F8),
+        primaryColor: const Color(0xFF195DE6),
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF195DE6),
+          brightness: Brightness.light,
+        ),
+      ),
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF6F6F8),
+        body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -123,6 +134,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

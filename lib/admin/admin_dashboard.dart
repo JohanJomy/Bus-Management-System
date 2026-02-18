@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_map/flutter_map.dart'; 
 import 'package:latlong2/latlong.dart'; 
-
-// Make sure this file exists in your lib folder!
 import 'fleet_management_screen.dart'; 
+import 'fee_management_screen.dart';
 
 void main() {
   runApp(const BusAdminApp());
@@ -40,7 +39,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // This list manages which screen is shown
   late final List<Widget> _pages = [
     const MainDashboardView(),      // Index 0
-    const Center(child: Text("Fees & Payments Page", style: TextStyle(fontSize: 24, color: Colors.black))), 
+    const FeeManagementScreen(),    // Index 1
     const FleetManagementScreen(),  // Index 2
     const Center(child: Text("Route Planning Page", style: TextStyle(fontSize: 24, color: Colors.black))), 
     const Center(child: Text("Notifications Page", style: TextStyle(fontSize: 24, color: Colors.black))), 
@@ -50,8 +49,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Row(
+    return Theme(
+      data: ThemeData(
+        brightness: Brightness.light,
+        scaffoldBackgroundColor: const Color(0xFFF6F6F8),
+        primaryColor: const Color(0xFF195DE6),
+        useMaterial3: true,
+        textTheme: GoogleFonts.interTextTheme(),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF195DE6),
+          brightness: Brightness.light,
+        ),
+      ),
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF6F6F8),
+        body: Row(
         children: [
           Sidebar(
             selectedIndex: _selectedIndex,
@@ -72,6 +84,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -147,9 +160,9 @@ class WelcomeSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Welcome back, Admin", style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Color.fromARGB(255, 255, 255, 255))),
+        const Text("Welcome back, Admin", style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
         Text("Monday, 30 October 2023 | System overview is looking good.", 
-             style: TextStyle(color: const Color.fromARGB(255, 250, 250, 250), fontSize: 14)),
+             style: TextStyle(color: const Color(0xFF64748B), fontSize: 14)),
       ],
     );
   }

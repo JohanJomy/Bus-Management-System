@@ -26,7 +26,7 @@ class _DriverDashboardState extends State<DriverDashboard> {
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final Color bgColor =
-        isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
+        isDark ? const Color(0xFF0F172A) : const Color(0xFFF6F6F8);
     final Color textSec =
         isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
     final Color primaryColor = const Color(0xFF137FEC);
