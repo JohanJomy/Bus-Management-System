@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:razorpay_flutter/razorpay_flutter.dart';
+import 'package:razorpay_web/razorpay_web.dart';
+import 'package:bms_student/student/screens/payment_receipt_screen.dart';
+import 'package:intl/intl.dart';
 
 class FeePaymentScreen extends StatefulWidget {
   const FeePaymentScreen({super.key});
@@ -10,6 +12,11 @@ class FeePaymentScreen extends StatefulWidget {
 
 class _FeePaymentScreenState extends State<FeePaymentScreen> {
   late Razorpay _razorpay;
+  double _amountDue = 4500.00;
+  final List<Map<String, String>> _paymentHistory = [
+    {'title': 'Quarter 2 Fees', 'date': 'Jul 12, 2023', 'amount': '₹4500.00'},
+    {'title': 'Quarter 1 Fees', 'date': 'Apr 05, 2023', 'amount': '₹4500.00'},
+  ];
 
   @override
   void initState() {
@@ -27,8 +34,33 @@ class _FeePaymentScreenState extends State<FeePaymentScreen> {
   }
 
   void _handlePaymentSuccess(PaymentSuccessResponse response) {
+    if (_amountDue <= 0.0) return;
+
+    final paymentId = response.paymentId ?? 'N/A';
+    final date = DateFormat('MMM dd, yyyy').format(DateTime.now());
+    
+    final paymentDetails = {
+      'title': 'Quarter 3 Fees',
+      'date': date,
+      'amount': '₹4500.00',
+      'paymentId': paymentId,
+    };
+    
+    setState(() {
+      _amountDue = 0.00;
+      _paymentHistory.insert(0, paymentDetails);
+    });
+    
+    // Navigate naturally after state update
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PaymentReceiptScreen(paymentDetails: paymentDetails),
+      ),
+    );
+    
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Payment Successful! Payment ID: ${response.paymentId}')),
+      SnackBar(content: Text('Payment Successful! Payment ID: $paymentId')),
     );
   }
 
@@ -44,10 +76,24 @@ class _FeePaymentScreenState extends State<FeePaymentScreen> {
     );
   }
 
+  void _resetPayment() {
+    setState(() {
+      _amountDue = 4500.00;
+      // Remove the latest entry if it matches the one we add on success
+      if (_paymentHistory.isNotEmpty && _paymentHistory.first['title'] == 'Quarter 3 Fees') {
+        _paymentHistory.removeAt(0);
+      }
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Payment Reset for Testing')),
+    );
+  }
+
   void _openRazorpay() {
     var options = {
       'key': 'rzp_test_SKJarDIhvjFJgi',
-      'amount': 450000,
+      'amount': (_amountDue * 100).toInt(),
       'name': 'Bus Management System',
       'description': 'Fee Payment',
       'prefill': {
@@ -60,7 +106,7 @@ class _FeePaymentScreenState extends State<FeePaymentScreen> {
     };
 
     try {
-      _razorpay.open(options);
+      _razorpay.open(options, context: context);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
@@ -85,6 +131,11 @@ class _FeePaymentScreenState extends State<FeePaymentScreen> {
           style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.w600),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh), // Reset button for testing
+            tooltip: 'Reset Payment',
+            onPressed: _resetPayment,
+          ),
           IconButton(
             icon: const Icon(Icons.info_outline),
             onPressed: () => Navigator.pushNamed(context, '/restricted'),
@@ -124,7 +175,7 @@ class _FeePaymentScreenState extends State<FeePaymentScreen> {
                             ),
                           ),
                           Text(
-                            '4500.00',
+                            _amountDue.toStringAsFixed(2),
                             style: TextStyle(
                               color: textColor,
                               fontSize: 64,
@@ -135,32 +186,60 @@ class _FeePaymentScreenState extends State<FeePaymentScreen> {
                         ],
                       ),
                       const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF451A03) : const Color(0xFFFEF3C7),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.calendar_today,
-                              size: 14,
-                              color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Due by Jan 15, 2026',
-                              style: TextStyle(
+                      if (_amountDue > 0)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF451A03) : const Color(0xFFFEF3C7),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.calendar_today,
+                                size: 14,
                                 color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309),
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 8),
+                              Text(
+                                'Due by Jan 15, 2026',
+                                style: TextStyle(
+                                  color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.check_circle,
+                                size: 14,
+                                color: Colors.green,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'All Dues Paid',
+                                style: TextStyle(
+                                  color: Colors.green,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),
@@ -190,9 +269,18 @@ class _FeePaymentScreenState extends State<FeePaymentScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                _buildHistoryItem(context, 'Quarter 2 Fees', 'Jul 12, 2023', '₹4500.00'),
-                const SizedBox(height: 16),
-                _buildHistoryItem(context, 'Quarter 1 Fees', 'Apr 05, 2023', '₹4500.00'),
+                ..._paymentHistory.map((payment) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: _buildHistoryItem(
+                      context,
+                      payment['title']!,
+                      payment['date']!,
+                      payment['amount']!,
+                      payment,
+                    ),
+                  );
+                }),
 
                 const SizedBox(height: 120),
               ],
@@ -213,18 +301,19 @@ class _FeePaymentScreenState extends State<FeePaymentScreen> {
                 ),
                 child: SafeArea(
                   child: ElevatedButton(
-                    onPressed: _openRazorpay,
+                    onPressed: _amountDue > 0 ? _openRazorpay : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF137FEC),
+                      disabledBackgroundColor: Colors.grey,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 18),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      elevation: 5,
+                      elevation: _amountDue > 0 ? 5 : 0,
                       shadowColor: const Color(0xFF137FEC).withOpacity(0.4),
                     ),
-                    child: const Text(
-                      'Pay ₹4500.00 Now',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    child: Text(
+                      _amountDue > 0 ? 'Pay ₹${_amountDue.toStringAsFixed(2)} Now' : 'Paid',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
@@ -236,43 +325,57 @@ class _FeePaymentScreenState extends State<FeePaymentScreen> {
     );
   }
 
-  Widget _buildHistoryItem(BuildContext context, String title, String date, String amount) {
+  void _navigateToReceipt(Map<String, dynamic> payment) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PaymentReceiptScreen(paymentDetails: payment),
+      ),
+    );
+  }
+
+  Widget _buildHistoryItem(BuildContext context, String title, String date, String amount, Map<String, dynamic> payment) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: Colors.green.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(Icons.check_circle, color: Colors.green, size: 16),
-        ),
-        const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                color: isDark ? Colors.white : Colors.black,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
+    return InkWell(
+      onTap: () => _navigateToReceipt(payment),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.green.withOpacity(0.1),
+              shape: BoxShape.circle,
             ),
-            Text(date, style: TextStyle(color: Colors.grey[500], fontSize: 10)),
-          ],
-        ),
-        const Spacer(),
-        Text(
-          amount,
-          style: TextStyle(
-            color: isDark ? Colors.white : Colors.black,
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
+            child: const Icon(Icons.check_circle, color: Colors.green, size: 16),
           ),
-        ),
-      ],
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  color: isDark ? Colors.white : Colors.black,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Text(date, style: TextStyle(color: Colors.grey[500], fontSize: 10)),
+            ],
+          ),
+          const Spacer(),
+          Text(
+            amount,
+            style: TextStyle(
+              color: isDark ? Colors.white : Colors.black,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Icon(Icons.chevron_right, size: 16, color: Colors.grey[400]),
+        ],
+      ),
     );
   }
 }
