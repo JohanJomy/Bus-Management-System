@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_theme.dart';
 
 class FleetManagementScreen extends StatelessWidget {
   const FleetManagementScreen({super.key});
@@ -17,12 +18,12 @@ class FleetManagementScreen extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     "Bus & Fleet Management",
                     style: TextStyle(
                       fontSize: 30,
                       fontWeight: FontWeight.w900,
-                      color: Color(0xFF1E293B),
+                      color: onSurface(context),
                       letterSpacing: -0.5,
                     ),
                   ),
@@ -30,7 +31,7 @@ class FleetManagementScreen extends StatelessWidget {
                   Text(
                     "Manage your active fleet and monitor performance metrics.",
                     style: TextStyle(
-                      color: const Color(0xFF64748B),
+                      color: onSurfaceVariant(context),
                       fontSize: 14,
                     ),
                   ),
@@ -38,9 +39,19 @@ class FleetManagementScreen extends StatelessWidget {
               ),
               Row(
                 children: [
-                  _actionButton("Export Fleet Data", Icons.download, isPrimary: false),
+                  _actionButton(
+                    context,
+                    "Export Fleet Data",
+                    Icons.download,
+                    isPrimary: false,
+                  ),
                   const SizedBox(width: 12),
-                  _actionButton("Add New Bus", Icons.add, isPrimary: true),
+                  _actionButton(
+                    context,
+                    "Add New Bus",
+                    Icons.add,
+                    isPrimary: true,
+                  ),
                 ],
               ),
             ],
@@ -55,6 +66,7 @@ class FleetManagementScreen extends StatelessWidget {
                 runSpacing: 16,
                 children: [
                   _summaryCard(
+                    context,
                     "Total Buses",
                     "42",
                     Icons.directions_bus,
@@ -63,6 +75,7 @@ class FleetManagementScreen extends StatelessWidget {
                     isTrendUp: true,
                   ),
                   _summaryCard(
+                    context,
                     "In Operation",
                     "35",
                     Icons.check_circle,
@@ -70,6 +83,7 @@ class FleetManagementScreen extends StatelessWidget {
                     subtitle: "Active on 12 routes",
                   ),
                   _summaryCard(
+                    context,
                     "Maintenance Req.",
                     "4",
                     Icons.build,
@@ -78,6 +92,7 @@ class FleetManagementScreen extends StatelessWidget {
                     isWarning: true,
                   ),
                   _summaryCard(
+                    context,
                     "Avg. Occupancy",
                     "68%",
                     Icons.group,
@@ -99,9 +114,9 @@ class FleetManagementScreen extends StatelessWidget {
                 flex: 2,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: surfaceColor(context),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey[200]!),
+                    border: Border.all(color: borderColor(context)),
                   ),
                   child: Column(
                     children: [
@@ -110,25 +125,28 @@ class FleetManagementScreen extends StatelessWidget {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
+                            Text(
                               "Vehicle Inventory",
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.black,
+                                color: onSurface(context),
                               ),
                             ),
                             TextButton(
                               onPressed: () {},
                               child: const Text(
                                 "View All",
-                                style: TextStyle(fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF195DE6),
+                                ),
                               ),
                             ),
                           ],
                         ),
                       ),
-                      _buildInventoryTable(),
+                      _buildInventoryTable(context),
                     ],
                   ),
                 ),
@@ -140,43 +158,47 @@ class FleetManagementScreen extends StatelessWidget {
                 flex: 1,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: surfaceColor(context),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey[200]!),
+                    border: Border.all(color: borderColor(context)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Padding(
-                        padding: EdgeInsets.all(24.0),
+                      Padding(
+                        padding: const EdgeInsets.all(24.0),
                         child: Text(
                           "Upcoming Maintenance",
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: Colors.black,
+                            color: onSurface(context),
                           ),
                         ),
                       ),
                       _maintenanceItem(
+                        context,
                         "BUS-089 - Oil Change",
                         "Scheduled: Oct 24, 2023",
                         Icons.oil_barrel,
                         Colors.orange,
                       ),
                       _maintenanceItem(
+                        context,
                         "BUS-112 - Brake Inspection",
                         "Scheduled: Oct 26, 2023",
                         Icons.settings_input_component,
                         Colors.blue,
                       ),
                       _maintenanceItem(
+                        context,
                         "BUS-045 - Tire Rotation",
                         "Scheduled: Oct 29, 2023",
                         Icons.tire_repair,
                         Colors.purple,
                       ),
                       _maintenanceItem(
+                        context,
                         "BUS-099 - Yearly Permit",
                         "Due: Nov 02, 2023",
                         Icons.verified,
@@ -186,25 +208,26 @@ class FleetManagementScreen extends StatelessWidget {
                         padding: const EdgeInsets.all(16.0),
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFF8F9FC),
-                            foregroundColor: Colors.grey[600],
+                            backgroundColor: inputFillColor(context),
+                            foregroundColor: onSurface(context),
                             elevation: 0,
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
+                              side: BorderSide(color: borderColor(context)),
                             ),
                           ),
                           onPressed: () {},
-                          child: const Text(
-                            "VIEW FULL SCHEDULE",
+                          child: Text(
+                            "Manage Schedule",
                             style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 1.2,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: onSurface(context),
                             ),
                           ),
                         ),
-                      )
+                      ),
                     ],
                   ),
                 ),
@@ -218,22 +241,31 @@ class FleetManagementScreen extends StatelessWidget {
 
   // --- Helper Widgets ---
 
-  Widget _actionButton(String label, IconData icon, {required bool isPrimary}) {
+  Widget _actionButton(
+    BuildContext context,
+    String label,
+    IconData icon, {
+    required bool isPrimary,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: isPrimary ? const Color(0xFF195DE6) : Colors.white,
+        color: isPrimary ? const Color(0xFF195DE6) : surfaceColor(context),
         borderRadius: BorderRadius.circular(8),
-        border: isPrimary ? null : Border.all(color: Colors.grey[300]!),
+        border: isPrimary ? null : Border.all(color: borderColor(context)),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: isPrimary ? Colors.white : Colors.black),
+          Icon(
+            icon,
+            size: 18,
+            color: isPrimary ? Colors.white : onSurface(context),
+          ),
           const SizedBox(width: 8),
           Text(
             label,
             style: TextStyle(
-              color: isPrimary ? Colors.white : Colors.black,
+              color: isPrimary ? Colors.white : onSurface(context),
               fontWeight: FontWeight.bold,
               fontSize: 13,
             ),
@@ -244,6 +276,7 @@ class FleetManagementScreen extends StatelessWidget {
   }
 
   Widget _summaryCard(
+    BuildContext context,
     String title,
     String value,
     IconData icon,
@@ -256,10 +289,10 @@ class FleetManagementScreen extends StatelessWidget {
       width: 280,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: surfaceColor(context),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isWarning ? Colors.orange[200]! : Colors.grey[200]!,
+          color: isWarning ? Colors.orange[200]! : borderColor(context),
         ),
       ),
       child: Column(
@@ -271,7 +304,7 @@ class FleetManagementScreen extends StatelessWidget {
               Text(
                 title,
                 style: TextStyle(
-                  color: Colors.grey[600],
+                  color: onSurfaceVariant(context),
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                 ),
@@ -282,10 +315,10 @@ class FleetManagementScreen extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
-              color: Colors.black,
+              color: onSurface(context),
             ),
           ),
           const SizedBox(height: 8),
@@ -294,7 +327,9 @@ class FleetManagementScreen extends StatelessWidget {
             style: TextStyle(
               color: isTrendUp
                   ? Colors.green
-                  : (isWarning ? Colors.orange[700] : Colors.grey[500]),
+                  : (isWarning
+                        ? Colors.orange[700]
+                        : onSurfaceVariant(context)),
               fontSize: 12,
               fontWeight: FontWeight.bold,
             ),
@@ -304,81 +339,8 @@ class FleetManagementScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildInventoryTable() {
-    return Table(
-      columnWidths: const {
-        0: FlexColumnWidth(1),
-        1: FlexColumnWidth(1.5),
-        2: FlexColumnWidth(1.5),
-        3: FlexColumnWidth(1.5),
-        4: FlexColumnWidth(1),
-      },
-      children: [
-        TableRow(
-          decoration: BoxDecoration(color: Colors.grey[50]),
-          children: [
-            "BUS ID",
-            "PLATE & CAPACITY",
-            "OCCUPANCY",
-            "ROUTE",
-            "STATUS"
-          ]
-              .map(
-                (text) => Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                  child: Text(
-                    text,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF4E6797),
-                    ),
-                  ),
-                ),
-              )
-              .toList(),
-        ),
-        _tableRow(
-          "BUS-102",
-          "ABC-1234",
-          "52 Seats",
-          0.85,
-          "Downtown - Route A",
-          "On Route",
-          Colors.green,
-        ),
-        _tableRow(
-          "BUS-089",
-          "XYZ-9876",
-          "40 Seats",
-          0.42,
-          "Suburban - Line 4",
-          "On Route",
-          Colors.green,
-        ),
-        _tableRow(
-          "BUS-115",
-          "KLY-4421",
-          "52 Seats",
-          0.0,
-          "Not Assigned",
-          "In Maintenance",
-          Colors.orange,
-        ),
-        _tableRow(
-          "BUS-074",
-          "MOP-8829",
-          "48 Seats",
-          0.65,
-          "Airport Express",
-          "Standby",
-          Colors.grey,
-        ),
-      ],
-    );
-  }
-
   TableRow _tableRow(
+    BuildContext context,
     String id,
     String plate,
     String seats,
@@ -388,6 +350,11 @@ class FleetManagementScreen extends StatelessWidget {
     Color statusColor,
   ) {
     return TableRow(
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: borderColor(context), width: 0.5),
+        ),
+      ),
       children: [
         Padding(
           padding: const EdgeInsets.all(24),
@@ -406,14 +373,17 @@ class FleetManagementScreen extends StatelessWidget {
             children: [
               Text(
                 plate,
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  color: Colors.black,
+                  color: onSurface(context),
                 ),
               ),
               Text(
                 seats,
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: onSurfaceVariant(context),
+                ),
               ),
             ],
           ),
@@ -425,7 +395,7 @@ class FleetManagementScreen extends StatelessWidget {
               Expanded(
                 child: LinearProgressIndicator(
                   value: occupancy,
-                  backgroundColor: Colors.grey[200],
+                  backgroundColor: borderColor(context),
                   color: const Color(0xFF195DE6),
                   minHeight: 6,
                 ),
@@ -433,9 +403,10 @@ class FleetManagementScreen extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 "${(occupancy * 100).toInt()}%",
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 12,
+                  color: onSurface(context),
                 ),
               ),
             ],
@@ -445,7 +416,7 @@ class FleetManagementScreen extends StatelessWidget {
           padding: const EdgeInsets.all(24),
           child: Text(
             route,
-            style: TextStyle(color: Colors.grey[600], fontSize: 13),
+            style: TextStyle(color: onSurfaceVariant(context), fontSize: 13),
           ),
         ),
         Padding(
@@ -453,7 +424,7 @@ class FleetManagementScreen extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.1),
+              color: statusColor.withOpacity(0.15),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
@@ -471,7 +442,84 @@ class FleetManagementScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildInventoryTable(BuildContext context) {
+    return Table(
+      columnWidths: const {
+        0: FlexColumnWidth(1),
+        1: FlexColumnWidth(1.5),
+        2: FlexColumnWidth(1.5),
+        3: FlexColumnWidth(1.5),
+        4: FlexColumnWidth(1),
+      },
+      children: [
+        TableRow(
+          decoration: BoxDecoration(color: inputFillColor(context)),
+          children:
+              ["BUS ID", "PLATE &\nCAPACITY", "OCCUPANCY", "ROUTE", "STATUS"]
+                  .map(
+                    (text) => Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 16,
+                      ),
+                      child: Text(
+                        text,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          color: onSurfaceVariant(context),
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+        ),
+        _tableRow(
+          context,
+          "BUS-102",
+          "ABC-1234",
+          "52 Seats",
+          0.85,
+          "Downtown - Route A",
+          "ON ROUTE",
+          Colors.green,
+        ),
+        _tableRow(
+          context,
+          "BUS-089",
+          "XYZ-9876",
+          "40 Seats",
+          0.42,
+          "Suburban - Line 4",
+          "ON ROUTE",
+          Colors.green,
+        ),
+        _tableRow(
+          context,
+          "BUS-115",
+          "KLY-4421",
+          "52 Seats",
+          0.0,
+          "Not Assigned",
+          "IN MAINTENANCE",
+          Colors.orange,
+        ),
+        _tableRow(
+          context,
+          "BUS-077",
+          "ERT-5562",
+          "32 Seats",
+          0.60,
+          "Campus - Loop B",
+          "ON ROUTE",
+          Colors.green,
+        ),
+      ],
+    );
+  }
+
   Widget _maintenanceItem(
+    BuildContext context,
     String title,
     String date,
     IconData icon,
@@ -482,14 +530,14 @@ class FleetManagementScreen extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey[100]!),
+        border: Border.all(color: borderColor(context)),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withOpacity(0.15),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Icon(icon, color: color, size: 20),
@@ -501,20 +549,23 @@ class FleetManagementScreen extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
-                    color: Colors.black,
+                    color: onSurface(context),
                   ),
                 ),
                 Text(
                   date,
-                  style: TextStyle(color: Colors.grey[500], fontSize: 11),
+                  style: TextStyle(
+                    color: onSurfaceVariant(context),
+                    fontSize: 11,
+                  ),
                 ),
               ],
             ),
           ),
-          const Icon(Icons.chevron_right, color: Colors.grey, size: 18),
+          Icon(Icons.chevron_right, color: onSurfaceVariant(context), size: 18),
         ],
       ),
     );

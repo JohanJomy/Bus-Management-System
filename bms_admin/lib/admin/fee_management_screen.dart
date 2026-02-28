@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_theme.dart';
 
 const Color _primaryColor = Color(0xFF195DE6);
 
@@ -7,173 +8,181 @@ class FeeManagementScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(32.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Page title + actions
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      color: bgColor(context),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Page title + actions
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Fees & Payments',
+                        style: TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.5,
+                          color: onSurface(context),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Manage student transport fees, configure stop-wise charges, and monitor collection status.',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: onSurfaceVariant(context),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 8,
                   children: [
-                    Text(
-                      'Fees & Payments',
-                      style: TextStyle(
-                        fontSize: 30,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.5,
-                        color: Colors.black,
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 14,
+                        ),
+                        foregroundColor: _primaryColor,
+                        side: BorderSide(
+                          color: _primaryColor.withValues(alpha: 0.4),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: () {},
+                      icon: const Icon(Icons.upload_file_outlined, size: 20),
+                      label: const Text(
+                        'Export Report',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Manage student transport fees, configure stop-wise charges, and monitor collection status.',
-                      style: TextStyle(fontSize: 14, color: Color(0xFF64748B)),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 14,
+                        ),
+                        backgroundColor: _primaryColor,
+                        foregroundColor: Colors.white,
+                        elevation: 4,
+                        shadowColor: _primaryColor.withValues(alpha: 0.3),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: () {},
+                      icon: const Icon(
+                        Icons.notifications_active_outlined,
+                        size: 20,
+                      ),
+                      label: const Text(
+                        'Send Reminders',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 16),
-              Wrap(
-                spacing: 12,
-                runSpacing: 8,
-                children: [
-                  OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 14,
-                      ),
-                      foregroundColor: _primaryColor,
-                      side: BorderSide(
-                        color: _primaryColor.withOpacity(0.4),
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    onPressed: () {},
-                    icon: const Icon(Icons.upload_file_outlined, size: 20),
-                    label: const Text(
-                      'Export Report',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
+              ],
+            ),
+
+            const SizedBox(height: 32),
+
+            // Summary cards
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 700;
+                final cardWidth = isNarrow
+                    ? constraints.maxWidth
+                    : (constraints.maxWidth - 16) / 2;
+                return Wrap(
+                  spacing: 16,
+                  runSpacing: 16,
+                  children: [
+                    SizedBox(
+                      width: cardWidth,
+                      child: const _SummaryCard(
+                        title: 'Total Collected',
+                        value: '\$45,000',
+                        deltaText: '+12.5%',
+                        deltaColor: Colors.green,
+                        icon: Icons.account_balance_wallet_outlined,
                       ),
                     ),
-                  ),
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 14,
-                      ),
-                      backgroundColor: _primaryColor,
-                      foregroundColor: Colors.white,
-                      elevation: 4,
-                      shadowColor: _primaryColor.withOpacity(0.3),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                    SizedBox(
+                      width: cardWidth,
+                      child: const _SummaryCard(
+                        title: 'Pending Dues',
+                        value: '\$12,500',
+                        deltaText: '-5.2%',
+                        deltaColor: Colors.orange,
+                        icon: Icons.pending_actions_outlined,
                       ),
                     ),
-                    onPressed: () {},
-                    icon: const Icon(
-                      Icons.notifications_active_outlined,
-                      size: 20,
-                    ),
-                    label: const Text(
-                      'Send Reminders',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 32),
-
-          // Summary cards
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final isNarrow = constraints.maxWidth < 700;
-              final cardWidth =
-                  isNarrow ? constraints.maxWidth : (constraints.maxWidth - 16) / 2;
-              return Wrap(
-                spacing: 16,
-                runSpacing: 16,
-                children: [
-                  SizedBox(
-                    width: cardWidth,
-                    child: const _SummaryCard(
-                      title: 'Total Collected',
-                      value: '\$45,000',
-                      deltaText: '+12.5%',
-                      deltaColor: Colors.green,
-                      icon: Icons.account_balance_wallet_outlined,
-                    ),
-                  ),
-                  SizedBox(
-                    width: cardWidth,
-                    child: const _SummaryCard(
-                      title: 'Pending Dues',
-                      value: '\$12,500',
-                      deltaText: '-5.2%',
-                      deltaColor: Colors.orange,
-                      icon: Icons.pending_actions_outlined,
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-
-          const SizedBox(height: 32),
-
-          // Main content: left fee configuration, right payment history
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final isStacked = constraints.maxWidth < 950;
-
-              final left = SizedBox(
-                width: isStacked ? double.infinity : constraints.maxWidth * 0.32,
-                child: const _FeeConfigurationCard(),
-              );
-
-              final right = SizedBox(
-                width: isStacked ? double.infinity : constraints.maxWidth * 0.64,
-                child: const _PaymentHistoryCard(),
-              );
-
-              if (isStacked) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [left, const SizedBox(height: 24), right],
+                  ],
                 );
-              }
+              },
+            ),
 
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [left, const SizedBox(width: 24), right],
-              );
-            },
-          ),
-        ],
+            const SizedBox(height: 32),
+
+            // Main content: left fee configuration, right payment history
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isStacked = constraints.maxWidth < 950;
+
+                final left = SizedBox(
+                  width: isStacked
+                      ? double.infinity
+                      : constraints.maxWidth * 0.32,
+                  child: const _FeeConfigurationCard(),
+                );
+
+                final right = SizedBox(
+                  width: isStacked
+                      ? double.infinity
+                      : constraints.maxWidth * 0.64,
+                  child: const _PaymentHistoryCard(),
+                );
+
+                if (isStacked) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [left, const SizedBox(height: 24), right],
+                  );
+                }
+
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [left, const SizedBox(width: 24), right],
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
 }
-
-// ---------------------------------------------------------------------------
-// Summary Card
 // ---------------------------------------------------------------------------
 
 class _SummaryCard extends StatelessWidget {
@@ -196,12 +205,12 @@ class _SummaryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: surfaceColor(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _primaryColor.withOpacity(0.08)),
+        border: Border.all(color: borderColor(context)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: isDark(context) ? 0.0 : 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -215,11 +224,11 @@ class _SummaryCard extends StatelessWidget {
             children: [
               Text(
                 title.toUpperCase(),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.8,
-                  color: Color(0xFF6B7280),
+                  color: onSurfaceVariant(context),
                 ),
               ),
               Icon(icon, color: deltaColor, size: 24),
@@ -231,10 +240,10 @@ class _SummaryCard extends StatelessWidget {
             children: [
               Text(
                 value,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.w900,
-                  color: Colors.black,
+                  color: onSurface(context),
                 ),
               ),
               const SizedBox(width: 8),
@@ -249,9 +258,9 @@ class _SummaryCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'vs. previous month',
-            style: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)),
+            style: TextStyle(fontSize: 11, color: onSurfaceVariant(context)),
           ),
         ],
       ),
@@ -270,12 +279,12 @@ class _FeeConfigurationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: surfaceColor(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _primaryColor.withOpacity(0.12)),
+        border: Border.all(color: borderColor(context)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: isDark(context) ? 0.0 : 0.02),
             blurRadius: 10,
             offset: const Offset(0, 6),
           ),
@@ -289,12 +298,12 @@ class _FeeConfigurationCard extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Fee Configuration',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black,
+                    color: onSurface(context),
                   ),
                 ),
                 TextButton(
@@ -317,24 +326,28 @@ class _FeeConfigurationCard extends StatelessWidget {
             child: Column(
               children: [
                 _buildStopFeeItem(
+                  context,
                   'Downtown Central',
                   'Monthly transport fee',
                   '\$120',
                 ),
                 const SizedBox(height: 16),
                 _buildStopFeeItem(
+                  context,
                   'North Suburb',
                   'Monthly transport fee',
                   '\$100',
                 ),
                 const SizedBox(height: 16),
                 _buildStopFeeItem(
+                  context,
                   'East Gate Terminus',
                   'Monthly transport fee',
                   '\$150',
                 ),
                 const SizedBox(height: 16),
                 _buildStopFeeItem(
+                  context,
                   'West River Plaza',
                   'Monthly transport fee',
                   '\$130',
@@ -344,7 +357,7 @@ class _FeeConfigurationCard extends StatelessWidget {
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size.fromHeight(44),
                     side: BorderSide(
-                      color: _primaryColor.withOpacity(0.3),
+                      color: _primaryColor.withValues(alpha: 0.3),
                       width: 1.4,
                     ),
                     shape: RoundedRectangleBorder(
@@ -374,7 +387,12 @@ class _FeeConfigurationCard extends StatelessWidget {
     );
   }
 
-  Widget _buildStopFeeItem(String stopName, String description, String amount) {
+  Widget _buildStopFeeItem(
+    BuildContext context,
+    String stopName,
+    String description,
+    String amount,
+  ) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -383,16 +401,16 @@ class _FeeConfigurationCard extends StatelessWidget {
           children: [
             Text(
               stopName,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
-                color: Colors.black,
+                color: onSurface(context),
               ),
             ),
             const SizedBox(height: 2),
             Text(
               description,
-              style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
+              style: TextStyle(fontSize: 11, color: onSurfaceVariant(context)),
             ),
           ],
         ),
@@ -400,10 +418,10 @@ class _FeeConfigurationCard extends StatelessWidget {
           children: [
             Text(
               amount,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
-                color: Colors.black,
+                color: onSurface(context),
               ),
             ),
             IconButton(
@@ -431,16 +449,17 @@ class _FeeConfigurationCard extends StatelessWidget {
 class _PaymentHistoryCard extends StatelessWidget {
   const _PaymentHistoryCard();
 
+  // Payment History Card build
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: surfaceColor(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _primaryColor.withOpacity(0.12)),
+        border: Border.all(color: borderColor(context)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: isDark(context) ? 0.0 : 0.02),
             blurRadius: 10,
             offset: const Offset(0, 6),
           ),
@@ -455,12 +474,12 @@ class _PaymentHistoryCard extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Payment History',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black,
+                    color: onSurface(context),
                   ),
                 ),
                 Row(
@@ -479,7 +498,7 @@ class _PaymentHistoryCard extends StatelessWidget {
                           hintText: 'Search student...',
                           hintStyle: const TextStyle(fontSize: 12),
                           filled: true,
-                          fillColor: const Color(0xFFF3F4F6),
+                          fillColor: inputFillColor(context),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
                             borderSide: BorderSide.none,
@@ -490,12 +509,12 @@ class _PaymentHistoryCard extends StatelessWidget {
                     const SizedBox(width: 8),
                     IconButton.filledTonal(
                       style: IconButton.styleFrom(
-                        backgroundColor: const Color(0xFFF3F4F6),
+                        backgroundColor: inputFillColor(context),
                       ),
                       onPressed: () {},
                       icon: Icon(
                         Icons.filter_list,
-                        color: Colors.grey[700],
+                        color: onSurfaceVariant(context),
                         size: 18,
                       ),
                     ),
@@ -516,21 +535,37 @@ class _PaymentHistoryCard extends StatelessWidget {
                   constraints: BoxConstraints(minWidth: constraints.maxWidth),
                   child: DataTable(
                     headingRowColor: WidgetStateProperty.all(
-                      const Color(0xFFF3F4F6),
+                      isDark(context)
+                          ? const Color(0xFF1E293B)
+                          : const Color(0xFFF3F4F6),
                     ),
                     columnSpacing: 24,
                     dataRowMinHeight: 52,
                     dataRowMaxHeight: 64,
-                    columns: const [
-                      DataColumn(label: Text('STUDENT NAME', style: _headerStyle)),
-                      DataColumn(label: Text('COURSE', style: _headerStyle)),
-                      DataColumn(label: Text('AMOUNT', style: _headerStyle)),
-                      DataColumn(label: Text('DATE', style: _headerStyle)),
-                      DataColumn(label: Text('STATUS', style: _headerStyle)),
+                    columns: [
+                      DataColumn(
+                        label: Text(
+                          'STUDENT NAME',
+                          style: _headerStyle(context),
+                        ),
+                      ),
+                      DataColumn(
+                        label: Text('COURSE', style: _headerStyle(context)),
+                      ),
+                      DataColumn(
+                        label: Text('AMOUNT', style: _headerStyle(context)),
+                      ),
+                      DataColumn(
+                        label: Text('DATE', style: _headerStyle(context)),
+                      ),
+                      DataColumn(
+                        label: Text('STATUS', style: _headerStyle(context)),
+                      ),
                       DataColumn(label: SizedBox()),
                     ],
                     rows: [
                       _paymentRow(
+                        context,
                         'RS',
                         const Color(0xFFE5EDFF),
                         const Color(0xFF1D4ED8),
@@ -543,6 +578,7 @@ class _PaymentHistoryCard extends StatelessWidget {
                         const Color(0xFFD1FAE5),
                       ),
                       _paymentRow(
+                        context,
                         'AP',
                         const Color(0xFFFFEDD5),
                         const Color(0xFFEA580C),
@@ -555,6 +591,7 @@ class _PaymentHistoryCard extends StatelessWidget {
                         const Color(0xFFFFEDD5),
                       ),
                       _paymentRow(
+                        context,
                         'VJ',
                         const Color(0xFFDBEAFE),
                         const Color(0xFF1D4ED8),
@@ -567,6 +604,7 @@ class _PaymentHistoryCard extends StatelessWidget {
                         const Color(0xFFD1FAE5),
                       ),
                       _paymentRow(
+                        context,
                         'SM',
                         const Color(0xFFEDE9FE),
                         const Color(0xFF6D28D9),
@@ -579,6 +617,7 @@ class _PaymentHistoryCard extends StatelessWidget {
                         const Color(0xFFFFEDD5),
                       ),
                       _paymentRow(
+                        context,
                         'DS',
                         const Color(0xFFCCFBF1),
                         const Color(0xFF0F766E),
@@ -605,9 +644,12 @@ class _PaymentHistoryCard extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Showing 5 of 248 records',
-                  style: TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: onSurfaceVariant(context),
+                  ),
                 ),
                 Row(
                   children: [
@@ -656,14 +698,15 @@ class _PaymentHistoryCard extends StatelessWidget {
     );
   }
 
-  static const _headerStyle = TextStyle(
+  static TextStyle _headerStyle(BuildContext context) => TextStyle(
     fontSize: 11,
     fontWeight: FontWeight.w700,
     letterSpacing: 0.6,
-    color: Color(0xFF6B7280),
+    color: isDark(context) ? const Color(0xFF94A3B8) : const Color(0xFF6B7280),
   );
 
   static DataRow _paymentRow(
+    BuildContext context,
     String initials,
     Color initialsColor,
     Color initialsTextColor,
@@ -696,9 +739,10 @@ class _PaymentHistoryCard extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 studentName,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
+                  color: onSurface(context),
                 ),
               ),
             ],
@@ -724,15 +768,19 @@ class _PaymentHistoryCard extends StatelessWidget {
         DataCell(
           Text(
             amount,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: onSurface(context),
+            ),
           ),
         ),
         DataCell(
           Text(
             date,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
-              color: Color(0xFF6B7280),
+              color: onSurfaceVariant(context),
               fontWeight: FontWeight.w500,
             ),
           ),

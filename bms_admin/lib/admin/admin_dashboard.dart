@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'fleet_management_screen.dart';
 import 'fee_management_screen.dart';
+import 'notifications_screen.dart';
+import 'reports_screen.dart';
+import 'settings_screen.dart';
+import 'app_theme.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -20,71 +23,53 @@ class _DashboardScreenState extends State<DashboardScreen> {
     const MainDashboardView(),
     const FeeManagementScreen(),
     const FleetManagementScreen(),
-    const Center(
-      child: Text(
-        "Route Planning Page",
-        style: TextStyle(fontSize: 24, color: Colors.black),
+    Builder(
+      builder: (ctx) => Center(
+        child: Text(
+          "Route Planning Page",
+          style: TextStyle(fontSize: 24, color: onSurface(ctx)),
+        ),
       ),
     ),
-    const Center(
-      child: Text(
-        "Notifications Page",
-        style: TextStyle(fontSize: 24, color: Colors.black),
-      ),
-    ),
-    const Center(
-      child: Text(
-        "Reports Page",
-        style: TextStyle(fontSize: 24, color: Colors.black),
-      ),
-    ),
-    const Center(
-      child: Text(
-        "Settings Page",
-        style: TextStyle(fontSize: 24, color: Colors.black),
-      ),
-    ),
+    const NotificationsScreen(),
+    const ReportsScreen(),
+    const SettingsScreen(),
   ];
 
   @override
   Widget build(BuildContext context) {
-    return Theme(
-      data: ThemeData(
-        brightness: Brightness.light,
-        scaffoldBackgroundColor: const Color(0xFFF6F6F8),
-        primaryColor: const Color(0xFF195DE6),
-        useMaterial3: true,
-        textTheme: GoogleFonts.interTextTheme(),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF195DE6),
-          brightness: Brightness.light,
-        ),
-      ),
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF6F6F8),
-        body: Row(
-          children: [
-            Sidebar(
-              selectedIndex: _selectedIndex,
-              onItemSelected: (index) {
-                setState(() {
-                  _selectedIndex = index;
-                });
-              },
-            ),
-            Expanded(
-              child: Column(
+    return ValueListenableBuilder<bool>(
+      valueListenable: appIsDark,
+      builder: (context, dark, _) {
+        return Theme(
+          data: dark ? darkTheme() : lightTheme(),
+          child: Builder(
+            builder: (context) => Scaffold(
+              backgroundColor: bgColor(context),
+              body: Row(
                 children: [
-                  const Header(),
+                  Sidebar(
+                    selectedIndex: _selectedIndex,
+                    onItemSelected: (index) {
+                      setState(() {
+                        _selectedIndex = index;
+                      });
+                    },
+                  ),
                   Expanded(
-                    child: _pages[_selectedIndex],
+                    child: Column(
+                      children: [
+                        const Header(),
+                        Expanded(child: _pages[_selectedIndex]),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -119,9 +104,10 @@ class Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = isDark(context);
     return Container(
       height: 64,
-      color: Colors.white,
+      color: surfaceColor(context),
       padding: const EdgeInsets.symmetric(horizontal: 32),
       child: Row(
         children: [
@@ -129,28 +115,43 @@ class Header extends StatelessWidget {
             child: Container(
               height: 40,
               decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
+                color: inputFillColor(context),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const TextField(
-                style: TextStyle(color: Colors.black),
+              child: TextField(
+                style: TextStyle(color: onSurface(context)),
                 decoration: InputDecoration(
                   hintText: "Search students, routes, or drivers...",
-                  hintStyle: TextStyle(fontSize: 14, color: Colors.black54),
-                  prefixIcon: Icon(Icons.search, size: 20, color: Colors.black),
+                  hintStyle: TextStyle(
+                    fontSize: 14,
+                    color: onSurfaceVariant(context),
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search,
+                    size: 20,
+                    color: onSurfaceVariant(context),
+                  ),
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: 10),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
                 ),
               ),
             ),
           ),
           const SizedBox(width: 16),
-          const Icon(Icons.notifications_none, color: Colors.grey),
+          Icon(Icons.notifications_none, color: onSurfaceVariant(context)),
           const SizedBox(width: 16),
-          const CircleAvatar(
+          CircleAvatar(
             radius: 16,
-            backgroundColor: Colors.blueAccent,
-            child: Icon(Icons.person, size: 20, color: Colors.white),
+            backgroundColor: dark ? const Color(0xFF334155) : Colors.blueAccent,
+            child: const Icon(Icons.person, size: 20, color: Colors.white),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            "Admin",
+            style: TextStyle(
+              color: onSurface(context),
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -166,17 +167,17 @@ class WelcomeSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           "Welcome back, Admin",
           style: TextStyle(
             fontSize: 32,
             fontWeight: FontWeight.w900,
-            color: Color(0xFF1E293B),
+            color: onSurface(context),
           ),
         ),
         Text(
           "Monday, 30 October 2023 | System overview is looking good.",
-          style: TextStyle(color: const Color(0xFF64748B), fontSize: 14),
+          style: TextStyle(color: onSurfaceVariant(context), fontSize: 14),
         ),
       ],
     );
@@ -201,22 +202,14 @@ class MetricsGrid extends StatelessWidget {
           value: "42",
           icon: Icons.directions_bus,
         ),
-        MetricCard(
-          title: "TOTAL STUDENTS",
-          value: "1,250",
-          icon: Icons.group,
-        ),
+        MetricCard(title: "TOTAL STUDENTS", value: "1,250", icon: Icons.group),
         MetricCard(
           title: "PENDING FEES",
           value: "\$12k",
           icon: Icons.warning,
           color: Colors.red,
         ),
-        MetricCard(
-          title: "TRIPS TODAY",
-          value: "84",
-          icon: Icons.route,
-        ),
+        MetricCard(title: "TRIPS TODAY", value: "84", icon: Icons.route),
       ],
     );
   }
@@ -239,9 +232,9 @@ class MetricCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: surfaceColor(context),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.black12),
+        border: Border.all(color: borderColor(context)),
       ),
       child: Row(
         children: [
@@ -253,22 +246,22 @@ class MetricCard extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black54,
+                  color: onSurfaceVariant(context),
                 ),
               ),
               Text(
                 value,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black,
+                  color: onSurface(context),
                 ),
               ),
             ],
-          )
+          ),
         ],
       ),
     );
@@ -283,29 +276,29 @@ class MiddleLayout extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: surfaceColor(context),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             "Live Fleet Status",
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Colors.black,
+              color: onSurface(context),
             ),
           ),
           const SizedBox(height: 16),
-          _statusRow("Route 01: Downtown Express", 0.78),
-          _statusRow("Route 12: West Side Residential", 0.92),
+          _statusRow(context, "Route 01: Downtown Express", 0.78),
+          _statusRow(context, "Route 12: West Side Residential", 0.92),
         ],
       ),
     );
   }
 
-  Widget _statusRow(String label, double progress) {
+  Widget _statusRow(BuildContext context, String label, double progress) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(
@@ -315,15 +308,15 @@ class MiddleLayout extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: const TextStyle(
-                  color: Colors.black,
+                style: TextStyle(
+                  color: onSurface(context),
                   fontWeight: FontWeight.w500,
                 ),
               ),
               Text(
                 "${(progress * 100).toInt()}%",
-                style: const TextStyle(
-                  color: Colors.black,
+                style: TextStyle(
+                  color: onSurface(context),
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -333,7 +326,7 @@ class MiddleLayout extends StatelessWidget {
           LinearProgressIndicator(
             value: progress,
             color: const Color(0xFF195DE6),
-            backgroundColor: const Color(0xFFF1F5F9),
+            backgroundColor: inputFillColor(context),
           ),
         ],
       ),
@@ -356,15 +349,14 @@ class FleetTrackingOverview extends StatelessWidget {
             initialZoom: 15,
           ),
           children: [
-            TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'),
+            TileLayer(
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            ),
             const MarkerLayer(
               markers: [
                 Marker(
                   point: LatLng(9.5107, 76.5511),
-                  child: Icon(
-                    Icons.directions_bus,
-                    color: Color(0xFF195DE6),
-                  ),
+                  child: Icon(Icons.directions_bus, color: Color(0xFF195DE6)),
                 ),
               ],
             ),
@@ -390,46 +382,78 @@ class Sidebar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: 260,
-      color: Colors.white,
+      color: surfaceColor(context),
       padding: const EdgeInsets.symmetric(vertical: 24),
       child: Column(
         children: [
-          _logoHeader(),
+          _logoHeader(context),
           const SizedBox(height: 32),
-          _navItem(Icons.dashboard, "Dashboard", 0),
-          _navItem(Icons.payments_outlined, "Fees & Payments", 1),
-          _navItem(Icons.commute_outlined, "Fleet Management", 2),
-          _navItem(Icons.map_outlined, "Route Planning", 3),
-          _navItem(Icons.notifications_none, "Notifications", 4),
-          _navItem(Icons.analytics_outlined, "Reports", 5),
+          _navItem(context, Icons.dashboard, "Dashboard", 0),
+          _navItem(context, Icons.payments_outlined, "Fees & Payments", 1),
+          _navItem(context, Icons.commute_outlined, "Fleet Management", 2),
+          _navItem(context, Icons.map_outlined, "Route Planning", 3),
+          _navItem(context, Icons.notifications_none, "Notifications", 4),
+          _navItem(context, Icons.analytics_outlined, "Reports", 5),
           const Spacer(),
-          _navItem(Icons.settings_outlined, "Settings", 6),
+          _navItem(context, Icons.settings_outlined, "Settings", 6),
+          const SizedBox(height: 8),
         ],
       ),
     );
   }
 
-  Widget _logoHeader() {
+  Widget _logoHeader(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Row(
         children: [
-          const Icon(Icons.directions_bus, color: Color(0xFF195DE6), size: 32),
-          const SizedBox(width: 12),
-          const Text(
-            "BusAdmin Pro",
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-              color: Colors.black,
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: const Color(0xFF195DE6),
+              borderRadius: BorderRadius.circular(8),
             ),
+            child: const Icon(
+              Icons.directions_bus,
+              color: Colors.white,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "BusAdmin Pro",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                  color: onSurface(context),
+                ),
+              ),
+              Text(
+                "MANAGEMENT SUITE",
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1.2,
+                  color: onSurfaceVariant(context),
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _navItem(IconData icon, String label, int index) {
+  Widget _navItem(
+    BuildContext context,
+    IconData icon,
+    String label,
+    int index,
+  ) {
     bool isActive = selectedIndex == index;
     return GestureDetector(
       onTap: () => onItemSelected(index),
@@ -440,11 +464,14 @@ class Sidebar extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
         ),
         child: ListTile(
-          leading: Icon(icon, color: isActive ? Colors.white : Colors.black87),
+          leading: Icon(
+            icon,
+            color: isActive ? Colors.white : onSurfaceVariant(context),
+          ),
           title: Text(
             label,
             style: TextStyle(
-              color: isActive ? Colors.white : Colors.black87,
+              color: isActive ? Colors.white : onSurface(context),
               fontWeight: FontWeight.w600,
             ),
           ),
