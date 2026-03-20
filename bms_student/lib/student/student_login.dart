@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'google_sign_in_stub.dart' if (dart.library.js_interop) 'google_sign_in_web.dart' as web_btn;
 
 class StudentLoginScreen extends StatefulWidget {
@@ -118,25 +119,121 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
     }
   }
 
-  Future<void> _verifyStudentEmail(String email) async {
+Future<void> _verifyStudentEmail(String email) async {
+  if (!mounted) return;
+
+  setState(() {
+    _isLoading = true;
+  });
+
+  try {
+    // 1. Fetch Student Details
+    final dynamic studentData = await Supabase.instance.client
+        .from('students')
+        .select()
+        .eq('email', email)
+        .maybeSingle();
+
     if (!mounted) return;
 
-    setState(() {
-      _isLoading = true;
-    });
+    if (studentData != null) {
+      // Debugging: Print all columns found in the students table
+      debugPrint('Student Record Columns: ${studentData.keys}');
+      debugPrint('Full Student Record: $studentData');
 
-    try {
-      final dynamic studentData = await Supabase.instance.client
-          .from('students')
-          .select('email')
-          .eq('email', email)
-          .maybeSingle();
+      final String studentId = studentData['id']?.toString() ?? '';
+      final int? boardingStopId = studentData['boarding_stop_id'] as int?;
 
-      if (!mounted) return;
+      // 2. Fetch Boarding Stop Name and Arrival Time
+      String busStop = 'Unknown';
+      String arrivalTime = '--:--';
+      
+      if (boardingStopId != null) {
+        final stopData = await Supabase.instance.client
+            .from('stops')
+            .select('stop_name, arrival_time')
+            .eq('id', boardingStopId)
+            .maybeSingle();
+        if (stopData != null) {
+          busStop = stopData['stop_name']?.toString() ?? 'Unknown';
+          arrivalTime = stopData['arrival_time']?.toString() ?? '--:--';
+        }
+      }
 
-      if (studentData != null) {
-        Navigator.pushReplacementNamed(context, '/home');
-      } else {
+      // 3. Fetch Allocated Bus Number via Daily Manifest (Schema: Student -> Review Manifest -> Bus)
+      String busNumber = 'N/A';
+      if (studentId.isNotEmpty) {
+        try {
+          debugPrint('Looking for daily_manifests for Student ID: $studentId');
+          
+          // Get the LATEST manifest entry by ordering by date/id descending
+          final manifestList = await Supabase.instance.client
+              .from('daily_manifests')
+              .select('allocated_bus_id, manifest_date')
+              .eq('student_id', studentId)
+              .order('manifest_date', ascending: false)
+              .limit(1);
+
+          debugPrint('Manifest Query Result: $manifestList');
+
+          if (manifestList != null && (manifestList as List).isNotEmpty) {
+            final manifestData = manifestList.first;
+            final int? busId = manifestData['allocated_bus_id'] as int?;
+            
+            if (busId != null) {
+              debugPrint('Found Bus ID: $busId, fetching details...');
+              final busData = await Supabase.instance.client
+                  .from('buses')
+                  .select('bus_number')
+                  .eq('id', busId)
+                  .maybeSingle();
+              
+              if (busData != null) {
+                busNumber = busData['bus_number']?.toString() ?? 'N/A';
+                debugPrint('Final Bus Number: $busNumber');
+              } else {
+                debugPrint('Bus details not found for ID: $busId');
+              }
+            } else {
+              debugPrint('allocated_bus_id was null in manifest');
+            }
+          } else {
+            debugPrint('No manifest rows found.');
+          }
+        } catch (e) {
+          debugPrint('Error fetching bus info: $e');
+        }
+      }
+
+      // 4. Fetch Fee Status via Payments (latest)
+      String feeStatus = 'Unpaid';
+      if (studentId.isNotEmpty) {
+        final paymentData = await Supabase.instance.client
+            .from('payments')
+            .select('amount_paid') // Check amount_paid instead of potentially missing is_paid status
+            .eq('student_id', studentId)
+            // .order('created_at', ascending: false) // Optional: If consistent with payment history
+            .maybeSingle(); // Just get one if exists
+        
+        if (paymentData != null) {
+          final amount = paymentData['amount_paid'] as num? ?? 0;
+          feeStatus = amount > 0 ? 'Paid' : 'Pending';
+        }
+      }
+
+      // Save all details locally
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('student_id', studentId);
+      await prefs.setString('full_name', studentData['full_name']?.toString() ?? 'Student');
+      await prefs.setString('email', studentData['email']?.toString() ?? '');
+      await prefs.setString('branch', studentData['course']?.toString() ?? 'Unknown Branch'); // Mapping 'course' to 'branch'
+      await prefs.setString('bus_number', busNumber);
+      await prefs.setString('bus_stop', busStop);
+      await prefs.setString('fee_status', feeStatus);
+      await prefs.setString('arrival_time', arrivalTime);
+      
+      Navigator.pushReplacementNamed(context, '/home');
+    } else {
         // Not registered
         if (mounted) {
           setState(() {

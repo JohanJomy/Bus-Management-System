@@ -76,20 +76,6 @@ class _FeePaymentScreenState extends State<FeePaymentScreen> {
     );
   }
 
-  void _resetPayment() {
-    setState(() {
-      _amountDue = 4500.00;
-      // Remove the latest entry if it matches the one we add on success
-      if (_paymentHistory.isNotEmpty && _paymentHistory.first['title'] == 'Quarter 3 Fees') {
-        _paymentHistory.removeAt(0);
-      }
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Payment Reset for Testing')),
-    );
-  }
-
   void _openRazorpay() {
     var options = {
       'key': 'rzp_test_SKJarDIhvjFJgi',
@@ -130,17 +116,6 @@ class _FeePaymentScreenState extends State<FeePaymentScreen> {
           'Fee Payment',
           style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.w600),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh), // Reset button for testing
-            tooltip: 'Reset Payment',
-            onPressed: _resetPayment,
-          ),
-          IconButton(
-            icon: const Icon(Icons.info_outline),
-            onPressed: () => Navigator.pushNamed(context, '/restricted'),
-          ),
-        ],
       ),
       body: SafeArea(
         child: Stack(
@@ -258,14 +233,7 @@ class _FeePaymentScreenState extends State<FeePaymentScreen> {
                         letterSpacing: 1.5,
                       ),
                     ),
-                    Text(
-                      'View History',
-                      style: TextStyle(
-                        color: Theme.of(context).primaryColor,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    
                   ],
                 ),
                 const SizedBox(height: 16),

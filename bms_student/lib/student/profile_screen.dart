@@ -1,27 +1,66 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
   @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  // Default values
+  String _name = "Loading...";
+  String _branch = "Loading...";
+  String _busNumber = "--";
+  String _busStop = "--";
+  String _email = "";
+  String _imageUrl = "https://i.pravatar.cc/300?u=student";
+  String _college = "Saintgits College of Engineering";
+  String _feeStatus = "Paid";
+  
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+  
+  Future<void> _loadProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _name = prefs.getString('full_name') ?? "Student Name";
+      _branch = prefs.getString('branch') ?? "Unknown Branch";
+      _busNumber = prefs.getString('bus_number') ?? "--";
+      _busStop = prefs.getString('bus_stop') ?? "--";
+      _email = prefs.getString('email') ?? ""; // Assuming email was saved
+      
+      // Keep hardcoded/defaults for now if not in prefs
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Accept student data from Navigator arguments; fall back to mock data
+    // Accept student data from Navigator arguments; fall back to prefs
     final routeArgs = ModalRoute.of(context)?.settings.arguments;
     Map<String, dynamic>? args;
     if (routeArgs is Map) {
       args = Map<String, dynamic>.from(routeArgs);
     }
 
+    // If args present, use them, else use state variables
     final student = {
-      "name": args?['name'] ?? "Johan Jomy Kuruvilla",
-      "branch": args?['branch'] ?? "Computer Science & Engineering",
-      "college": args?['college'] ?? "Saintgits College of Engineering",
-      "busNumber": args?['busNumber'] ?? "13",
-      "busStop": args?['busStop'] ?? "Alumthuruty Market",
-      "feeStatus": args?['feeStatus'] ?? "Paid",
-      "imageUrl": args?['imageUrl'] ?? "https://i.pravatar.cc/300?u=alex",
+      "name": args?['name'] ?? _name,
+      "branch": args?['branch'] ?? _branch,
+      "college": args?['college'] ?? _college,
+      "busNumber": args?['busNumber'] ?? _busNumber,
+      "busStop": args?['busStop'] ?? _busStop,
+      "feeStatus": args?['feeStatus'] ?? _feeStatus,
+      "imageUrl": args?['imageUrl'] ?? _imageUrl,
     };
+    
+    // ... rest of build method ...
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
@@ -63,7 +102,12 @@ class ProfileScreen extends StatelessWidget {
                       ),
                       child: CircleAvatar(
                         radius: 60,
-                        backgroundImage: NetworkImage(student["imageUrl"]!),
+                        backgroundColor: isDark ? Colors.grey[800] : Colors.grey[200],
+                        child: Icon(
+                          Icons.person,
+                          size: 80,
+                          color: isDark ? Colors.grey[400] : Colors.grey[500],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
