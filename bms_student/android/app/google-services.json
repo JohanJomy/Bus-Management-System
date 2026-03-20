@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "598771915318",
+    "project_id": "bus-management-a7917",
+    "storage_bucket": "bus-management-a7917.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:598771915318:android:0d5a7b465ef98c95401697",
+        "android_client_info": {
+          "package_name": "com.example.bms_student"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCXpAFXC5zyHhkpjri7dXL5TyWHB7mT5XU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

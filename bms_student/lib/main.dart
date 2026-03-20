@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'firebase_options.dart';
 import 'student/student_login.dart';
 import 'student/home_screen.dart';
@@ -10,9 +11,23 @@ import 'student/profile_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
+  
+  if (Firebase.apps.isEmpty) {
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    } catch (e) {
+      debugPrint('Firebase initialization error: $e');
+      // Continue anyway as Firebase might already be initialized natively
+    }
+  }
+  
+  await Supabase.initialize(
+    url: 'https://lnssskyfwshwextaecdx.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxuc3Nza3lmd3Nod2V4dGFlY2R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI2MDkwNTksImV4cCI6MjA4ODE4NTA1OX0.80dphTCVyBmPCQW-taGVfXuERaOu06R1mlFMZ80FjeM',
   );
+
   runApp(const StudentApp());
 }
 
