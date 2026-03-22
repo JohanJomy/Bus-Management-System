@@ -12,6 +12,7 @@ class BusAdminApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      debugShowMaterialGrid: false,
       title: 'Bus Admin',
       theme: ThemeData(
         useMaterial3: true,

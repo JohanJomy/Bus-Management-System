@@ -155,13 +155,31 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   // ── Charts row ─────────────────────────────────────────────────────────────
   Widget _buildChartsRow(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(flex: 6, child: _buildBarChartCard(context)),
-        const SizedBox(width: 20),
-        Expanded(flex: 4, child: _buildDonutCard(context)),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isSmallScreen = constraints.maxWidth < 600;
+        
+        if (isSmallScreen) {
+          // Mobile: Stack vertically
+          return Column(
+            children: [
+              _buildBarChartCard(context),
+              const SizedBox(height: 16),
+              _buildDonutCard(context),
+            ],
+          );
+        } else {
+          // Desktop: Side by side with flex ratios
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(flex: 6, child: _buildBarChartCard(context)),
+              const SizedBox(width: 20),
+              Expanded(flex: 4, child: _buildDonutCard(context)),
+            ],
+          );
+        }
+      },
     );
   }
 

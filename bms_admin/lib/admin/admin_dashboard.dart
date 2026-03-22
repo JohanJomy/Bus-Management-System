@@ -6,6 +6,9 @@ import 'fee_management_screen.dart';
 import 'notifications_screen.dart';
 import 'reports_screen.dart';
 import 'settings_screen.dart';
+import 'bus_wise_student_screen.dart';
+import 'student_management_screen.dart';
+import 'boarding_list_screen.dart';
 import 'app_theme.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -23,6 +26,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     const MainDashboardView(),
     const FeeManagementScreen(),
     const FleetManagementScreen(),
+    const BusWiseStudentListScreen(),
+    const StudentManagementScreen(),
+    const BoardingListScreen(),
     Builder(
       builder: (ctx) => Center(
         child: Text(
@@ -60,7 +66,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     child: Column(
                       children: [
                         const Header(),
-                        Expanded(child: _pages[_selectedIndex]),
+                        Expanded(
+                          child: IndexedStack(
+                            index: _selectedIndex,
+                            children: _pages,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -189,10 +200,13 @@ class MetricsGrid extends StatelessWidget {
   const MetricsGrid({super.key});
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final crossAxisCount = screenWidth > 1200 ? 4 : screenWidth > 768 ? 2 : 1;
+    
     return GridView.count(
       physics: const NeverScrollableScrollPhysics(),
       shrinkWrap: true,
-      crossAxisCount: 4,
+      crossAxisCount: crossAxisCount,
       crossAxisSpacing: 16,
       mainAxisSpacing: 16,
       childAspectRatio: 2,
@@ -339,10 +353,12 @@ class FleetTrackingOverview extends StatelessWidget {
   const FleetTrackingOverview({super.key});
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final mapHeight = (screenHeight * 0.35).clamp(250.0, 400.0);
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
       child: SizedBox(
-        height: 300,
+        height: mapHeight,
         child: FlutterMap(
           options: const MapOptions(
             initialCenter: LatLng(9.5107, 76.5511),
@@ -380,32 +396,55 @@ class Sidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final sidebarWidth = screenWidth > 1024 ? 260.0 : screenWidth > 768 ? 200.0 : 70.0;
     return Container(
-      width: 260,
+      width: sidebarWidth,
       color: surfaceColor(context),
-      padding: const EdgeInsets.symmetric(vertical: 24),
-      child: Column(
-        children: [
-          _logoHeader(context),
-          const SizedBox(height: 32),
-          _navItem(context, Icons.dashboard, "Dashboard", 0),
-          _navItem(context, Icons.payments_outlined, "Fees & Payments", 1),
-          _navItem(context, Icons.commute_outlined, "Fleet Management", 2),
-          _navItem(context, Icons.map_outlined, "Route Planning", 3),
-          _navItem(context, Icons.notifications_none, "Notifications", 4),
-          _navItem(context, Icons.analytics_outlined, "Reports", 5),
-          const Spacer(),
-          _navItem(context, Icons.settings_outlined, "Settings", 6),
-          const SizedBox(height: 8),
-        ],
+      padding: EdgeInsets.symmetric(vertical: 24, horizontal: screenWidth > 768 ? 12 : 0),
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            _logoHeader(context),
+            const SizedBox(height: 32),
+            _navItem(context, Icons.dashboard, "Dashboard", 0),
+            _navItem(context, Icons.payments_outlined, "Fees & Payments", 1),
+            _navItem(context, Icons.commute_outlined, "Fleet Management", 2),
+            _navItem(context, Icons.groups_outlined, "Bus-wise Students", 3),
+            _navItem(context, Icons.person_outline, "Student Management", 4),
+            _navItem(context, Icons.location_city_outlined, "Boarding Stops", 5),
+            _navItem(context, Icons.map_outlined, "Route Planning", 6),
+            _navItem(context, Icons.notifications_none, "Notifications", 7),
+            _navItem(context, Icons.analytics_outlined, "Reports", 8),
+            const SizedBox(height: 16),
+            _navItem(context, Icons.settings_outlined, "Settings", 9),
+            const SizedBox(height: 8),
+          ],
+        ),
       ),
     );
   }
 
   Widget _logoHeader(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isCollapsed = screenWidth <= 768;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Row(
+      padding: EdgeInsets.symmetric(horizontal: isCollapsed ? 8 : 24),
+      child: isCollapsed
+          ? Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: const Color(0xFF195DE6),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.directions_bus,
+                color: Colors.white,
+                size: 20,
+              ),
+            )
+          : Row(
         children: [
           Container(
             width: 36,

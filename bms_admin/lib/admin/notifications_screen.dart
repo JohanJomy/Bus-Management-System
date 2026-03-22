@@ -98,13 +98,31 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   // ── Top section: channels + daily volume ─────────────────────────────────
   Widget _buildTopSection(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(flex: 5, child: _buildChannelsCard(context)),
-        const SizedBox(width: 20),
-        SizedBox(width: 220, child: _buildAlertVolumeCard(context)),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isSmallScreen = constraints.maxWidth < 600;
+        
+        if (isSmallScreen) {
+          // Mobile: Stack vertically
+          return Column(
+            children: [
+              _buildChannelsCard(context),
+              const SizedBox(height: 16),
+              _buildAlertVolumeCard(context),
+            ],
+          );
+        } else {
+          // Desktop: Side by side
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(flex: 5, child: _buildChannelsCard(context)),
+              const SizedBox(width: 20),
+              SizedBox(width: 220, child: _buildAlertVolumeCard(context)),
+            ],
+          );
+        }
+      },
     );
   }
 

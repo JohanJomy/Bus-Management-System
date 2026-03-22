@@ -1,299 +1,474 @@
 import 'package:flutter/material.dart';
-import 'app_theme.dart';
+import '../services/bus_service.dart';
+import '../models/bus_model.dart';
 
-class FleetManagementScreen extends StatelessWidget {
+class FleetManagementScreen extends StatefulWidget {
   const FleetManagementScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(32.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Title and Actions Row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Bus & Fleet Management",
-                    style: TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.w900,
-                      color: onSurface(context),
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    "Manage your active fleet and monitor performance metrics.",
-                    style: TextStyle(
-                      color: onSurfaceVariant(context),
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-              Row(
-                children: [
-                  _actionButton(
-                    context,
-                    "Export Fleet Data",
-                    Icons.download,
-                    isPrimary: false,
-                  ),
-                  const SizedBox(width: 12),
-                  _actionButton(
-                    context,
-                    "Add New Bus",
-                    Icons.add,
-                    isPrimary: true,
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 32),
+  State<FleetManagementScreen> createState() => _FleetManagementScreenState();
+}
 
-          // Summary Cards Grid
-          LayoutBuilder(
-            builder: (context, constraints) {
-              return Wrap(
-                spacing: 16,
-                runSpacing: 16,
-                children: [
-                  _summaryCard(
-                    context,
-                    "Total Buses",
-                    "42",
-                    Icons.directions_bus,
-                    Colors.blue,
-                    subtitle: "+2 from last month",
-                    isTrendUp: true,
-                  ),
-                  _summaryCard(
-                    context,
-                    "In Operation",
-                    "35",
-                    Icons.check_circle,
-                    Colors.green,
-                    subtitle: "Active on 12 routes",
-                  ),
-                  _summaryCard(
-                    context,
-                    "Maintenance Req.",
-                    "4",
-                    Icons.build,
-                    Colors.orange,
-                    subtitle: "Immediate action needed",
-                    isWarning: true,
-                  ),
-                  _summaryCard(
-                    context,
-                    "Avg. Occupancy",
-                    "68%",
-                    Icons.group,
-                    Colors.blueAccent,
-                    subtitle: "Optimized fleet usage",
-                  ),
-                ],
-              );
-            },
-          ),
-          const SizedBox(height: 32),
+class _FleetManagementScreenState extends State<FleetManagementScreen> {
+  final BusService _busService = BusService();
+  List<Bus> _buses = [];
+  bool _isLoading = true;
 
-          // Main Content: Table and Maintenance
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Vehicle Inventory Table
-              Expanded(
-                flex: 2,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: surfaceColor(context),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: borderColor(context)),
-                  ),
-                  child: Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(24.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              "Vehicle Inventory",
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: onSurface(context),
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: () {},
-                              child: const Text(
-                                "View All",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF195DE6),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      _buildInventoryTable(context),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 32),
-
-              // Upcoming Maintenance
-              Expanded(
-                flex: 1,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: surfaceColor(context),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: borderColor(context)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(24.0),
-                        child: Text(
-                          "Upcoming Maintenance",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: onSurface(context),
-                          ),
-                        ),
-                      ),
-                      _maintenanceItem(
-                        context,
-                        "BUS-089 - Oil Change",
-                        "Scheduled: Oct 24, 2023",
-                        Icons.oil_barrel,
-                        Colors.orange,
-                      ),
-                      _maintenanceItem(
-                        context,
-                        "BUS-112 - Brake Inspection",
-                        "Scheduled: Oct 26, 2023",
-                        Icons.settings_input_component,
-                        Colors.blue,
-                      ),
-                      _maintenanceItem(
-                        context,
-                        "BUS-045 - Tire Rotation",
-                        "Scheduled: Oct 29, 2023",
-                        Icons.tire_repair,
-                        Colors.purple,
-                      ),
-                      _maintenanceItem(
-                        context,
-                        "BUS-099 - Yearly Permit",
-                        "Due: Nov 02, 2023",
-                        Icons.verified,
-                        Colors.green,
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: inputFillColor(context),
-                            foregroundColor: onSurface(context),
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              side: BorderSide(color: borderColor(context)),
-                            ),
-                          ),
-                          onPressed: () {},
-                          child: Text(
-                            "Manage Schedule",
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: onSurface(context),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
+  @override
+  void initState() {
+    super.initState();
+    _loadBuses();
   }
 
-  // --- Helper Widgets ---
+  Future<void> _loadBuses() async {
+    setState(() => _isLoading = true);
+    try {
+      final buses = await _busService.getAllBuses();
+      setState(() => _buses = buses);
+    } catch (e) {
+      _showError('Failed to load buses: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
 
-  Widget _actionButton(
-    BuildContext context,
-    String label,
-    IconData icon, {
-    required bool isPrimary,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: isPrimary ? const Color(0xFF195DE6) : surfaceColor(context),
-        borderRadius: BorderRadius.circular(8),
-        border: isPrimary ? null : Border.all(color: borderColor(context)),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            size: 18,
-            color: isPrimary ? Colors.white : onSurface(context),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: TextStyle(
-              color: isPrimary ? Colors.white : onSurface(context),
-              fontWeight: FontWeight.bold,
-              fontSize: 13,
+  Future<void> _addNewBusToBackend({
+    required int busNumber,
+    required int totalCapacity,
+  }) async {
+    try {
+      await _busService.addBus(busNumber, totalCapacity);
+      await _loadBuses();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Bus #$busNumber added successfully')),
+        );
+      }
+    } catch (e) {
+      _showError('Error adding bus: $e');
+    }
+  }
+
+  Future<void> _editBusDialog(Bus bus) async {
+    final formKey = GlobalKey<FormState>();
+    final numberController = TextEditingController(text: bus.busNumber.toString());
+    final capacityController = TextEditingController(text: bus.totalCapacity.toString());
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit Bus'),
+        content: Form(
+          key: formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: numberController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Bus Number'),
+                  validator: (val) => (val == null || val.isEmpty)
+                      ? 'Required'
+                      : (int.tryParse(val) == null ? 'Invalid number' : null),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: capacityController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Total Capacity'),
+                  validator: (val) => (val == null || val.isEmpty)
+                      ? 'Required'
+                      : (int.tryParse(val) == null ? 'Invalid number' : null),
+                ),
+              ],
             ),
           ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (formKey.currentState!.validate()) {
+                try {
+                  await _busService.updateBus(
+                    bus.id,
+                    int.parse(numberController.text),
+                    int.parse(capacityController.text),
+                  );
+                  await _loadBuses();
+                  if (mounted) {
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Bus #${numberController.text} updated successfully')),
+                    );
+                  }
+                } catch (e) {
+                  _showError('Error updating bus: $e');
+                }
+              }
+            },
+            child: const Text('Update'),
+          ),
         ],
       ),
     );
   }
 
-  Widget _summaryCard(
-    BuildContext context,
-    String title,
-    String value,
-    IconData icon,
-    Color color, {
-    required String subtitle,
-    bool isTrendUp = false,
-    bool isWarning = false,
-  }) {
-    return Container(
-      width: 280,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: surfaceColor(context),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isWarning ? Colors.orange[200]! : borderColor(context),
+  Future<void> _deleteBus(Bus bus) async {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Bus'),
+        content: Text('Are you sure you want to delete Bus #${bus.busNumber}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                await _busService.deleteBus(bus.id);
+                await _loadBuses();
+                if (mounted) {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Bus #${bus.busNumber} deleted successfully')),
+                  );
+                }
+              } catch (e) {
+                _showError('Error deleting bus: $e');
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
+  }
+
+  void _showAddBusDialog() {
+    final formKey = GlobalKey<FormState>();
+    final numberController = TextEditingController();
+    final capacityController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Add New Bus'),
+        content: Form(
+          key: formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: numberController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Bus Number'),
+                  validator: (val) => (val == null || val.isEmpty)
+                      ? 'Required'
+                      : (int.tryParse(val) == null ? 'Invalid number' : null),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: capacityController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Total Capacity'),
+                  validator: (val) => (val == null || val.isEmpty)
+                      ? 'Required'
+                      : (int.tryParse(val) == null ? 'Invalid number' : null),
+                ),
+              ],
+            ),
+          ),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (formKey.currentState!.validate()) {
+                await _addNewBusToBackend(
+                  busNumber: int.parse(numberController.text),
+                  totalCapacity: int.parse(capacityController.text),
+                );
+                if (mounted && Navigator.canPop(ctx)) Navigator.pop(ctx);
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _isLoading
+        ? const Center(child: CircularProgressIndicator())
+        : SingleChildScrollView(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Bus & Fleet Management',
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: _showAddBusDialog,
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add Bus'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                _buildSummaryCards(),
+                const SizedBox(height: 24),
+                _buildInventoryTable(),
+              ],
+            ),
+          );
+  }
+
+  Widget _buildSummaryCards() {
+    return Wrap(
+      spacing: 16,
+      runSpacing: 16,
+      children: [
+        _SummaryCard(
+          title: 'Total Buses',
+          value: _buses.length.toString(),
+          icon: Icons.directions_bus,
+          color: Colors.blue,
+        ),
+        _SummaryCard(
+          title: 'Total Capacity',
+          value: _buses.isEmpty
+              ? '0'
+              : _buses
+                  .fold<int>(0, (sum, b) => sum + b.totalCapacity)
+                  .toString(),
+          icon: Icons.group,
+          color: Colors.green,
+        ),
+        _SummaryCard(
+          title: 'Avg Capacity',
+          value: _buses.isEmpty
+              ? '0'
+              : (_buses.fold<int>(0, (sum, b) => sum + b.totalCapacity) ~/
+                      _buses.length)
+                  .toString(),
+          icon: Icons.bar_chart,
+          color: Colors.orange,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInventoryTable() {
+    if (_buses.isEmpty) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Center(
+            child: Text('No buses found',
+                style: Theme.of(context).textTheme.bodyLarge),
+          ),
+        ),
+      );
+    }
+
+    return Card(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isSmallScreen = constraints.maxWidth < 600;
+          
+          if (isSmallScreen) {
+            // Mobile: Card-based list view
+            return SingleChildScrollView(
+              child: Column(
+                children: _buses.map((bus) => _buildBusCard(bus)).toList(),
+              ),
+            );
+          } else {
+            // Desktop: DataTable
+            return SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                columns: const [
+                  DataColumn(label: Text('Bus #')),
+                  DataColumn(label: Text('Capacity')),
+                  DataColumn(label: Text('Bus ID')),
+                  DataColumn(label: Text('Status')),
+                  DataColumn(label: Text('Actions')),
+                ],
+                rows: _buses
+                    .map((bus) => DataRow(
+                  cells: [
+                    DataCell(Text('#${bus.busNumber}')),
+                    DataCell(Text('${bus.totalCapacity}')),
+                    DataCell(Text('BUS-${bus.id}')),
+                    DataCell(Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.green[100],
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        'ACTIVE',
+                        style: TextStyle(
+                          color: Colors.green[700],
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    )),
+                    DataCell(Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit, size: 18),
+                          onPressed: () => _editBusDialog(bus),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete, size: 18),
+                          color: Colors.red,
+                          onPressed: () => _deleteBus(bus),
+                        ),
+                      ],
+                    )),
+                  ],
+                ))
+                    .toList(),
+              ),
+            );
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildBusCard(Bus bus) {
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Bus #${bus.busNumber}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.green[100],
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      'ACTIVE',
+                      style: TextStyle(
+                        color: Colors.green[700],
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('ID: BUS-${bus.id}',
+                          style: const TextStyle(fontSize: 12)),
+                      Text('Capacity: ${bus.totalCapacity}',
+                          style: const TextStyle(fontSize: 12)),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit, size: 20),
+                        onPressed: () => _editBusDialog(bus),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete, size: 20),
+                        color: Colors.red,
+                        onPressed: () => _deleteBus(bus),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SummaryCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final IconData icon;
+  final Color color;
+
+  const _SummaryCard({
+    required this.title,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 240,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[200]!),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -303,269 +478,23 @@ class FleetManagementScreen extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: TextStyle(
-                  color: onSurfaceVariant(context),
+                style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
+                  color: Colors.grey,
                 ),
               ),
-              Icon(icon, color: color, size: 20),
+              Icon(icon, color: color, size: 24),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
             value,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
-              color: onSurface(context),
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            subtitle,
-            style: TextStyle(
-              color: isTrendUp
-                  ? Colors.green
-                  : (isWarning
-                        ? Colors.orange[700]
-                        : onSurfaceVariant(context)),
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  TableRow _tableRow(
-    BuildContext context,
-    String id,
-    String plate,
-    String seats,
-    double occupancy,
-    String route,
-    String status,
-    Color statusColor,
-  ) {
-    return TableRow(
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: borderColor(context), width: 0.5),
-        ),
-      ),
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(
-            id,
-            style: const TextStyle(
-              color: Color(0xFF195DE6),
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                plate,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: onSurface(context),
-                ),
-              ),
-              Text(
-                seats,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: onSurfaceVariant(context),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 24),
-          child: Row(
-            children: [
-              Expanded(
-                child: LinearProgressIndicator(
-                  value: occupancy,
-                  backgroundColor: borderColor(context),
-                  color: const Color(0xFF195DE6),
-                  minHeight: 6,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                "${(occupancy * 100).toInt()}%",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                  color: onSurface(context),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(
-            route,
-            style: TextStyle(color: onSurfaceVariant(context), fontSize: 13),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(24),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              status,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: statusColor,
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildInventoryTable(BuildContext context) {
-    return Table(
-      columnWidths: const {
-        0: FlexColumnWidth(1),
-        1: FlexColumnWidth(1.5),
-        2: FlexColumnWidth(1.5),
-        3: FlexColumnWidth(1.5),
-        4: FlexColumnWidth(1),
-      },
-      children: [
-        TableRow(
-          decoration: BoxDecoration(color: inputFillColor(context)),
-          children:
-              ["BUS ID", "PLATE &\nCAPACITY", "OCCUPANCY", "ROUTE", "STATUS"]
-                  .map(
-                    (text) => Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 16,
-                      ),
-                      child: Text(
-                        text,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w900,
-                          color: onSurfaceVariant(context),
-                        ),
-                      ),
-                    ),
-                  )
-                  .toList(),
-        ),
-        _tableRow(
-          context,
-          "BUS-102",
-          "ABC-1234",
-          "52 Seats",
-          0.85,
-          "Downtown - Route A",
-          "ON ROUTE",
-          Colors.green,
-        ),
-        _tableRow(
-          context,
-          "BUS-089",
-          "XYZ-9876",
-          "40 Seats",
-          0.42,
-          "Suburban - Line 4",
-          "ON ROUTE",
-          Colors.green,
-        ),
-        _tableRow(
-          context,
-          "BUS-115",
-          "KLY-4421",
-          "52 Seats",
-          0.0,
-          "Not Assigned",
-          "IN MAINTENANCE",
-          Colors.orange,
-        ),
-        _tableRow(
-          context,
-          "BUS-077",
-          "ERT-5562",
-          "32 Seats",
-          0.60,
-          "Campus - Loop B",
-          "ON ROUTE",
-          Colors.green,
-        ),
-      ],
-    );
-  }
-
-  Widget _maintenanceItem(
-    BuildContext context,
-    String title,
-    String date,
-    IconData icon,
-    Color color,
-  ) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: borderColor(context)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Icon(icon, color: color, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                    color: onSurface(context),
-                  ),
-                ),
-                Text(
-                  date,
-                  style: TextStyle(
-                    color: onSurfaceVariant(context),
-                    fontSize: 11,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Icon(Icons.chevron_right, color: onSurfaceVariant(context), size: 18),
         ],
       ),
     );
