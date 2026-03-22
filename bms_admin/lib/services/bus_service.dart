@@ -213,4 +213,70 @@ class BusService {
       throw Exception('Error updating stop location: $e');
     }
   }
+
+  /// Gets stop links (adjacency matrix) from the backend
+  Future<List<Map<String, dynamic>>> getStopLinks() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/stop_links'),
+        headers: SupabaseConfig.getHeaders(),
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.cast<Map<String, dynamic>>();
+      } else if (response.statusCode == 404) {
+        return [];
+      } else {
+        throw Exception('Failed to load stop links: ${response.statusCode}');
+      }
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /// Adds a stop-to-stop edge in stop_links.
+  Future<void> addStopLink(int fromStopId, int toStopId) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/stop_links'),
+        headers: SupabaseConfig.getHeaders(),
+        body: jsonEncode({
+          'from_stop_id': fromStopId,
+          'to_stop_id': toStopId,
+        }),
+      );
+
+      if (response.statusCode != 200 &&
+          response.statusCode != 201 &&
+          response.statusCode != 204) {
+        throw Exception('Failed to add stop link: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error adding stop link: $e');
+    }
+  }
+
+  /// Deletes a stop-to-stop edge in both directions.
+  Future<void> deleteStopLink(int fromStopId, int toStopId) async {
+    try {
+      Future<void> deleteDirected(int fromId, int toId) async {
+        final response = await http.delete(
+          Uri.parse(
+            '$baseUrl/stop_links?from_stop_id=eq.$fromId&to_stop_id=eq.$toId',
+          ),
+          headers: SupabaseConfig.getHeaders(),
+        );
+
+        if (response.statusCode != 200 && response.statusCode != 204) {
+          throw Exception('Failed to delete stop link: ${response.statusCode}');
+        }
+      }
+
+      await deleteDirected(fromStopId, toStopId);
+      await deleteDirected(toStopId, fromStopId);
+    } catch (e) {
+      throw Exception('Error deleting stop link: $e');
+    }
+  }
 }

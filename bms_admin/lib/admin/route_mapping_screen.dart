@@ -22,10 +22,15 @@ class _RouteMappingScreenState extends State<RouteMappingScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   List<Stop> _stops = [];
+  List<Map<String, dynamic>> _stopLinks = [];
   bool _isLoading = true;
   bool _isSearching = false;
   bool _isEditMode = false;
+  bool _showEdges = false;
+  bool _isAddEdgeMode = false;
+  bool _isDeleteEdgeMode = false;
   int? _selectedStopId;
+  int? _pendingEdgeFromStopId;
   LatLng? _searchMarker;
 
   @override
@@ -61,6 +66,7 @@ class _RouteMappingScreenState extends State<RouteMappingScreen> {
     }
     try {
       final stops = await _busService.getAllStops();
+      final stopLinks = await _busService.getStopLinks();
       final firstMappedStop = stops.firstWhere(
         (s) => s.latitude != null && s.longitude != null,
         orElse: () => stops.isNotEmpty ? stops.first : _emptyStop,
@@ -72,6 +78,7 @@ class _RouteMappingScreenState extends State<RouteMappingScreen> {
 
       setState(() {
         _stops = stops;
+        _stopLinks = stopLinks;
         if (_selectedStopId == null && stops.isNotEmpty) {
           _selectedStopId = stops.first.id;
         }
@@ -104,11 +111,25 @@ class _RouteMappingScreenState extends State<RouteMappingScreen> {
     }
 
     try {
-      final lowerQuery = query.toLowerCase();
-      final matchedStop = _stops
-          .where((s) => s.stopName.toLowerCase().contains(lowerQuery))
-          .cast<Stop?>()
-          .firstWhere((s) => s != null, orElse: () => null);
+      Stop? matchedStop;
+
+      // Try to parse query as ID first
+      final stopId = int.tryParse(query);
+      if (stopId != null) {
+        matchedStop = _stops.cast<Stop?>().firstWhere(
+          (s) => s?.id == stopId,
+          orElse: () => null,
+        );
+      }
+
+      // If no ID match, search by stop name
+      if (matchedStop == null) {
+        final lowerQuery = query.toLowerCase();
+        matchedStop = _stops
+            .where((s) => s.stopName.toLowerCase().contains(lowerQuery))
+            .cast<Stop?>()
+            .firstWhere((s) => s != null, orElse: () => null);
+      }
 
       if (matchedStop != null &&
           matchedStop.latitude != null &&
@@ -117,7 +138,7 @@ class _RouteMappingScreenState extends State<RouteMappingScreen> {
           return;
         }
         setState(() {
-          _selectedStopId = matchedStop.id;
+          _selectedStopId = matchedStop!.id;
           _searchMarker = null;
         });
         _mapController.move(
@@ -239,6 +260,97 @@ class _RouteMappingScreenState extends State<RouteMappingScreen> {
     _mapController.move(LatLng(stop.latitude!, stop.longitude!), 16);
   }
 
+  int? _toInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '');
+  }
+
+  bool _edgeExists(int fromStopId, int toStopId) {
+    for (final link in _stopLinks) {
+      final from = _toInt(link['from_stop_id']);
+      final to = _toInt(link['to_stop_id']);
+      if ((from == fromStopId && to == toStopId) ||
+          (from == toStopId && to == fromStopId)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  Future<void> _onStopMarkerTap(Stop stop) async {
+    if (!(_showEdges && (_isAddEdgeMode || _isDeleteEdgeMode))) {
+      _selectStop(stop);
+      return;
+    }
+
+    final fromStopId = _pendingEdgeFromStopId;
+    if (fromStopId == null) {
+      setState(() {
+        _pendingEdgeFromStopId = stop.id;
+        _selectedStopId = stop.id;
+      });
+      _showMessage('First stop selected (#${stop.id}). Select second stop.');
+      return;
+    }
+
+    if (fromStopId == stop.id) {
+      _showMessage('Select a different second stop.');
+      return;
+    }
+
+    if (_edgeExists(fromStopId, stop.id)) {
+      if (_isDeleteEdgeMode) {
+        try {
+          await _busService.deleteStopLink(fromStopId, stop.id);
+          if (!mounted) return;
+
+          setState(() {
+            _stopLinks = _stopLinks.where((link) {
+              final from = _toInt(link['from_stop_id']);
+              final to = _toInt(link['to_stop_id']);
+              return !((from == fromStopId && to == stop.id) ||
+                  (from == stop.id && to == fromStopId));
+            }).toList();
+            _pendingEdgeFromStopId = null;
+            _selectedStopId = stop.id;
+          });
+          _showMessage('Edge deleted: #$fromStopId ↔ #${stop.id}');
+        } catch (e) {
+          _showMessage('Failed to delete edge: $e');
+        }
+        return;
+      }
+
+      setState(() => _pendingEdgeFromStopId = null);
+      _showMessage('Edge already exists between #$fromStopId and #${stop.id}.');
+      return;
+    }
+
+    if (_isDeleteEdgeMode) {
+      setState(() => _pendingEdgeFromStopId = null);
+      _showMessage('No edge found between #$fromStopId and #${stop.id}.');
+      return;
+    }
+
+    try {
+      await _busService.addStopLink(fromStopId, stop.id);
+      if (!mounted) return;
+
+      setState(() {
+        _stopLinks = [
+          ..._stopLinks,
+          {'from_stop_id': fromStopId, 'to_stop_id': stop.id},
+        ];
+        _pendingEdgeFromStopId = null;
+        _selectedStopId = stop.id;
+      });
+      _showMessage('Edge added: #$fromStopId ↔ #${stop.id}');
+    } catch (e) {
+      _showMessage('Failed to add edge: $e');
+    }
+  }
+
   void _showMessage(String message) {
     if (!mounted) {
       return;
@@ -290,42 +402,97 @@ class _RouteMappingScreenState extends State<RouteMappingScreen> {
                             'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                         userAgentPackageName: 'bms_admin',
                       ),
+                      if (_showEdges)
+                        PolylineLayer(
+                          polylines: _stopLinks
+                              .map((link) {
+                                final fromId = _toInt(link['from_stop_id']);
+                                final toId = _toInt(link['to_stop_id']);
+                                if (fromId == null || toId == null) return null;
+
+                                final fromStop = _stops.cast<Stop?>().firstWhere(
+                                  (s) => s?.id == fromId,
+                                  orElse: () => null,
+                                );
+                                final toStop = _stops.cast<Stop?>().firstWhere(
+                                  (s) => s?.id == toId,
+                                  orElse: () => null,
+                                );
+
+                                if (fromStop == null ||
+                                    toStop == null ||
+                                    fromStop.latitude == null ||
+                                    fromStop.longitude == null ||
+                                    toStop.latitude == null ||
+                                    toStop.longitude == null) {
+                                  return null;
+                                }
+
+                                return Polyline(
+                                  points: [
+                                    LatLng(fromStop.latitude!, fromStop.longitude!),
+                                    LatLng(toStop.latitude!, toStop.longitude!),
+                                  ],
+                                  color: Colors.red[900]!,
+                                  strokeWidth: 4,
+                                );
+                              })
+                              .whereType<Polyline>()
+                              .toList(),
+                        ),
                       MarkerLayer(
                         markers: [
                           ...mappedStops.map((stop) {
                             final isSelected = stop.id == _selectedStopId;
+                            final isPendingEdgeStart =
+                                stop.id == _pendingEdgeFromStopId;
+                            double zoomLevel = 13.0;
+                            try {
+                              zoomLevel = _mapController.camera.zoom;
+                            } catch (_) {
+                              zoomLevel = 13.0;
+                            }
+                            final markerSize = (zoomLevel * 1.5).clamp(14.0, 40.0);
+                            final textSize = (zoomLevel * 0.4).clamp(6.0, 10.0);
                             return Marker(
                               point: LatLng(stop.latitude!, stop.longitude!),
-                              width: 44,
-                              height: 44,
+                              width: markerSize,
+                              height: markerSize,
                               child: GestureDetector(
-                                onTap: () => _selectStop(stop),
+                                onTap: () => _onStopMarkerTap(stop),
                                 child: Container(
                                   decoration: BoxDecoration(
-                                    color: isSelected
-                                        ? Theme.of(context).primaryColor
-                                        : surfaceColor(context),
-                                    borderRadius: BorderRadius.circular(14),
+                                    color: isPendingEdgeStart
+                                        ? Colors.orange
+                                        : (isSelected
+                                            ? Colors.blue
+                                            : Colors.black),
+                                    shape: BoxShape.circle,
                                     border: Border.all(
-                                      color: isSelected
+                                      color: (isSelected || isPendingEdgeStart)
                                           ? Colors.white
-                                          : borderColor(context),
-                                      width: 1.2,
+                                          : Colors.black,
+                                      width: 2,
                                     ),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withOpacity(0.12),
-                                        blurRadius: 10,
-                                        offset: const Offset(0, 4),
+                                        color: Colors.black.withOpacity(0.3),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
                                       ),
                                     ],
                                   ),
-                                  child: Icon(
-                                    Icons.location_on,
-                                    size: 24,
-                                    color: isSelected
-                                        ? Colors.white
-                                        : Theme.of(context).primaryColor,
+                                  child: Center(
+                                    child: Text(
+                                      stop.id.toString(),
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: textSize,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -440,6 +607,99 @@ class _RouteMappingScreenState extends State<RouteMappingScreen> {
                               ),
                             ),
                           ),
+                          SizedBox(
+                            height: 46,
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _showEdges
+                                    ? Colors.blueAccent
+                                    : Colors.grey[600],
+                                foregroundColor: Colors.white,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _showEdges = !_showEdges;
+                                  if (!_showEdges) {
+                                    _isAddEdgeMode = false;
+                                    _isDeleteEdgeMode = false;
+                                    _pendingEdgeFromStopId = null;
+                                  }
+                                });
+                              },
+                              icon: Icon(
+                                _showEdges
+                                    ? Icons.link
+                                    : Icons.link_off,
+                              ),
+                              label: Text(
+                                _showEdges ? 'Hide Routes' : 'Show Routes',
+                              ),
+                            ),
+                          ),
+                          if (_showEdges)
+                            SizedBox(
+                              height: 46,
+                              child: ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _isAddEdgeMode
+                                      ? Colors.deepOrange
+                                      : Colors.teal,
+                                  foregroundColor: Colors.white,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _isAddEdgeMode = !_isAddEdgeMode;
+                                    if (_isAddEdgeMode) {
+                                      _isDeleteEdgeMode = false;
+                                    }
+                                    if (!_isAddEdgeMode) {
+                                      _pendingEdgeFromStopId = null;
+                                    }
+                                  });
+                                },
+                                icon: Icon(
+                                  _isAddEdgeMode
+                                      ? Icons.timeline
+                                      : Icons.add_link,
+                                ),
+                                label: Text(
+                                  _isAddEdgeMode ? 'Finish Edge' : 'Add Edge',
+                                ),
+                              ),
+                            ),
+                          if (_showEdges)
+                            SizedBox(
+                              height: 46,
+                              child: ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _isDeleteEdgeMode
+                                      ? Colors.red[800]
+                                      : Colors.brown,
+                                  foregroundColor: Colors.white,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _isDeleteEdgeMode = !_isDeleteEdgeMode;
+                                    if (_isDeleteEdgeMode) {
+                                      _isAddEdgeMode = false;
+                                    }
+                                    if (!_isDeleteEdgeMode) {
+                                      _pendingEdgeFromStopId = null;
+                                    }
+                                  });
+                                },
+                                icon: Icon(
+                                  _isDeleteEdgeMode
+                                      ? Icons.delete_forever
+                                      : Icons.remove_circle_outline,
+                                ),
+                                label: Text(
+                                  _isDeleteEdgeMode
+                                      ? 'Finish Delete'
+                                      : 'Delete Edge',
+                                ),
+                              ),
+                            ),
                         ],
                       );
                     },
@@ -459,9 +719,17 @@ class _RouteMappingScreenState extends State<RouteMappingScreen> {
                       border: Border.all(color: borderColor(context)),
                     ),
                     child: Text(
-                      _isEditMode
+                      _isDeleteEdgeMode
+                        ? (_pendingEdgeFromStopId == null
+                          ? 'Delete Edge mode: select first stop marker.'
+                          : 'Delete Edge mode: select second stop to delete edge from #$_pendingEdgeFromStopId.')
+                        : (_isAddEdgeMode
+                        ? (_pendingEdgeFromStopId == null
+                          ? 'Add Edge mode: select first stop marker.'
+                          : 'Add Edge mode: select second stop to create edge from #$_pendingEdgeFromStopId.')
+                        : (_isEditMode
                           ? 'Edit mode is ON: select a stop marker, then tap anywhere on map to reposition it.'
-                          : 'Select a stop marker to view details.',
+                          : 'Select a stop marker to view details.')),
                       style: TextStyle(
                         color: onSurfaceVariant(context),
                         fontSize: 12,
@@ -548,7 +816,7 @@ class _RouteMappingScreenState extends State<RouteMappingScreen> {
                               ),
                               const SizedBox(height: 10),
                               Text(
-                                selectedStop.stopName,
+                                '${selectedStop.stopName} (#${selectedStop.id})',
                                 style: TextStyle(
                                   fontWeight: FontWeight.w700,
                                   color: onSurface(context),
@@ -558,6 +826,13 @@ class _RouteMappingScreenState extends State<RouteMappingScreen> {
                               const SizedBox(height: 6),
                               Text(
                                 'Fee: ₹${selectedStop.feeAmount.toStringAsFixed(0)}',
+                                style: TextStyle(
+                                  color: onSurfaceVariant(context),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Bus: ${selectedStop.actualBusId ?? 'N/A'}',
                                 style: TextStyle(
                                   color: onSurfaceVariant(context),
                                 ),
