@@ -15,7 +15,7 @@ class BusService {
         Uri.parse('$baseUrl/buses'),
         headers: SupabaseConfig.getHeaders(),
       );
-      
+
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         return data.map((bus) => Bus.fromJson(bus)).toList();
@@ -34,7 +34,7 @@ class BusService {
         Uri.parse('$baseUrl/buses?id=eq.$busId'),
         headers: SupabaseConfig.getHeaders(),
       );
-      
+
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         return data.isNotEmpty ? Bus.fromJson(data[0]) : null;
@@ -49,10 +49,12 @@ class BusService {
   Future<List<Map<String, dynamic>>> getStudentsByBusId(int busId) async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/daily_manifests?allocated_bus_id=eq.$busId&select=*,students(*)'),
+        Uri.parse(
+          '$baseUrl/daily_manifests?allocated_bus_id=eq.$busId&select=*,students(*)',
+        ),
         headers: SupabaseConfig.getHeaders(),
       );
-      
+
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         return data.cast<Map<String, dynamic>>();
@@ -65,13 +67,17 @@ class BusService {
   }
 
   /// Gets students on a specific bus with payment status
-  Future<List<Map<String, dynamic>>> getStudentsWithPaymentByBus(int busId) async {
+  Future<List<Map<String, dynamic>>> getStudentsWithPaymentByBus(
+    int busId,
+  ) async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/daily_manifests?allocated_bus_id=eq.$busId&select=*,students(*,payments(*))'),
+        Uri.parse(
+          '$baseUrl/daily_manifests?allocated_bus_id=eq.$busId&select=*,students(*,payments(*))',
+        ),
         headers: SupabaseConfig.getHeaders(),
       );
-      
+
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         return data.cast<Map<String, dynamic>>();
@@ -90,10 +96,12 @@ class BusService {
         Uri.parse('$baseUrl/daily_manifests?allocated_bus_id=eq.$busId'),
         headers: SupabaseConfig.getHeaders(),
       );
-      
+
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        return data.map((manifest) => DailyManifest.fromJson(manifest)).toList();
+        return data
+            .map((manifest) => DailyManifest.fromJson(manifest))
+            .toList();
       } else {
         throw Exception('Failed to load manifest: ${response.statusCode}');
       }
@@ -113,7 +121,7 @@ class BusService {
           'total_capacity': totalCapacity,
         }),
       );
-      
+
       if (response.statusCode == 201) {
         final List<dynamic> data = jsonDecode(response.body);
         return Bus.fromJson(data[0]);
@@ -136,7 +144,7 @@ class BusService {
           'total_capacity': totalCapacity,
         }),
       );
-      
+
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         return Bus.fromJson(data[0]);
@@ -155,7 +163,7 @@ class BusService {
         Uri.parse('$baseUrl/buses?id=eq.$busId'),
         headers: SupabaseConfig.getHeaders(),
       );
-      
+
       if (response.statusCode != 200 && response.statusCode != 204) {
         throw Exception('Failed to delete bus: ${response.statusCode}');
       }
@@ -171,7 +179,7 @@ class BusService {
         Uri.parse('$baseUrl/stops'),
         headers: SupabaseConfig.getHeaders(),
       );
-      
+
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         return data.map((stop) => Stop.fromJson(stop)).toList();
@@ -180,6 +188,29 @@ class BusService {
       }
     } catch (e) {
       throw Exception('Error fetching stops: $e');
+    }
+  }
+
+  /// Updates stop latitude/longitude in the backend.
+  Future<void> updateStopLocation(
+    int stopId,
+    double latitude,
+    double longitude,
+  ) async {
+    try {
+      final response = await http.patch(
+        Uri.parse('$baseUrl/stops?id=eq.$stopId'),
+        headers: SupabaseConfig.getHeaders(),
+        body: jsonEncode({'lat': latitude, 'long': longitude}),
+      );
+
+      if (response.statusCode != 200 && response.statusCode != 204) {
+        throw Exception(
+          'Failed to update stop location: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Error updating stop location: $e');
     }
   }
 }
