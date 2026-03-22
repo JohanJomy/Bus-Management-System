@@ -1,4 +1,10 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'google_sign_in_stub.dart' if (dart.library.js_interop) 'google_sign_in_web.dart' as web_btn;
 
 class StudentLoginScreen extends StatefulWidget {
   const StudentLoginScreen({super.key});
@@ -11,14 +17,281 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
   final idController = TextEditingController();
   final passController = TextEditingController();
   bool _isPasswordVisible = false;
+  bool _isLoading = false;
+  StreamSubscription<AuthState>? _authSubscription;
+  StreamSubscription<GoogleSignInAuthenticationEvent>? _googleAuthSubscription;
+  
+  // Client ID for Web and identifying the server for Android/iOS
+  static const String _webClientId = '737200464124-pd1jrj61c96rp36vughpmtstv5chkjm7.apps.googleusercontent.com';
+  
+  // GoogleSignIn configuration
+  final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkExistingSession();
+    });
+    _setupAuthListener();
+    _initGoogleSignIn();
+  }
+  
+  Future<void> _initGoogleSignIn() async {
+    // Initialize GoogleSignIn
+    unawaited(_googleSignIn.initialize(
+      clientId: kIsWeb ? _webClientId : null, 
+      serverClientId: kIsWeb ? null : _webClientId, // Native uses webClientId as serverClientId
+      // No scopes param in initialize for v7? Let me double-check.
+    ).then((_) {
+      _setupGoogleSignInListener();
+      _googleSignIn.attemptLightweightAuthentication();
+    }));
+  }
+
+  void _setupAuthListener() {
+    _authSubscription?.cancel();
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      if (!mounted) return;
+      final AuthChangeEvent event = data.event;
+      final Session? session = data.session;
+      
+      // If we just signed in, and have an email, verify it.
+      if (event == AuthChangeEvent.signedIn && session != null && session.user.email != null) {
+        _verifyStudentEmail(session.user.email!);
+      }
+    });
+  }
+  
+  void _setupGoogleSignInListener() {
+    _googleAuthSubscription = _googleSignIn.authenticationEvents.listen((event) {
+        if (event is GoogleSignInAuthenticationEventSignIn) {
+           _handleGoogleSignInAuth(event.user);
+        } else if (event is GoogleSignInAuthenticationEventSignOut) {
+           // Handle sign out if needed
+        }
+    });
+  }
+
+  Future<void> _checkExistingSession() async {
+    final session = Supabase.instance.client.auth.currentSession;
+    if (session != null && session.user.email != null) {
+      // Auto verify if session exists
+      await _verifyStudentEmail(session.user.email!);
+    }
+  }
+
+  Future<void> _handleGoogleSignInAuth(GoogleSignInAccount googleUser) async {
+    // Only set loading if needed, avoid setting it false if verify clears it
+    if (!_isLoading) {
+      if (mounted) setState(() => _isLoading = true);
+    }
+    
+    try {
+      final googleAuth = googleUser.authentication;
+      final idToken = googleAuth.idToken;
+      // Fix for "requestedScopes cannot be null or empty" on Android
+      // We must explicitly request at least one scope when asking for authorization tokens 
+      // even if we only need the ID Token.
+      final accessToken = (await googleUser.authorizationClient.authorizationForScopes(['email']))?.accessToken;
+
+      if (idToken == null) {
+        throw 'No ID Token found.';
+      }
+
+      await Supabase.instance.client.auth.signInWithIdToken(
+        provider: OAuthProvider.google,
+        idToken: idToken,
+        accessToken: accessToken,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Invalid Google Sign-In:'),
+            backgroundColor: const Color.fromARGB(255, 19, 127, 236),
+          ),
+        );
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+Future<void> _verifyStudentEmail(String email) async {
+  if (!mounted) return;
+
+  setState(() {
+    _isLoading = true;
+  });
+
+  try {
+    // 1. Fetch Student Details
+    final dynamic studentData = await Supabase.instance.client
+        .from('students')
+        .select()
+        .eq('email', email)
+        .maybeSingle();
+
+    if (!mounted) return;
+
+    if (studentData != null) {
+      // Debugging: Print all columns found in the students table
+      debugPrint('Student Record Columns: ${studentData.keys}');
+      debugPrint('Full Student Record: $studentData');
+
+      final String studentId = studentData['id']?.toString() ?? '';
+      final int? boardingStopId = studentData['boarding_stop_id'] as int?;
+
+      // 2. Fetch Boarding Stop Name and Arrival Time
+      String busStop = 'Unknown';
+      String arrivalTime = '--:--';
+      
+      if (boardingStopId != null) {
+        final stopData = await Supabase.instance.client
+            .from('stops')
+            .select('stop_name, arrival_time')
+            .eq('id', boardingStopId)
+            .maybeSingle();
+        if (stopData != null) {
+          busStop = stopData['stop_name']?.toString() ?? 'Unknown';
+          arrivalTime = stopData['arrival_time']?.toString() ?? '--:--';
+        }
+      }
+
+      // 3. Fetch Allocated Bus Number via Daily Manifest (Schema: Student -> Review Manifest -> Bus)
+      String busNumber = 'N/A';
+      if (studentId.isNotEmpty) {
+        try {
+          debugPrint('Looking for daily_manifests for Student ID: $studentId');
+          
+          // Get the LATEST manifest entry by ordering by date/id descending
+          final manifestList = await Supabase.instance.client
+              .from('daily_manifests')
+              .select('allocated_bus_id, manifest_date')
+              .eq('student_id', studentId)
+              .order('manifest_date', ascending: false)
+              .limit(1);
+
+          debugPrint('Manifest Query Result: $manifestList');
+
+          if (manifestList != null && (manifestList as List).isNotEmpty) {
+            final manifestData = manifestList.first;
+            final int? busId = manifestData['allocated_bus_id'] as int?;
+            
+            if (busId != null) {
+              debugPrint('Found Bus ID: $busId, fetching details...');
+              final busData = await Supabase.instance.client
+                  .from('buses')
+                  .select('bus_number')
+                  .eq('id', busId)
+                  .maybeSingle();
+              
+              if (busData != null) {
+                busNumber = busData['bus_number']?.toString() ?? 'N/A';
+                debugPrint('Final Bus Number: $busNumber');
+              } else {
+                debugPrint('Bus details not found for ID: $busId');
+              }
+            } else {
+              debugPrint('allocated_bus_id was null in manifest');
+            }
+          } else {
+            debugPrint('No manifest rows found.');
+          }
+        } catch (e) {
+          debugPrint('Error fetching bus info: $e');
+        }
+      }
+
+      // 4. Fetch Fee Status via Payments (latest)
+      String feeStatus = 'Unpaid';
+      if (studentId.isNotEmpty) {
+        final paymentData = await Supabase.instance.client
+            .from('payments')
+            .select('amount_paid') // Check amount_paid instead of potentially missing is_paid status
+            .eq('student_id', studentId)
+            // .order('created_at', ascending: false) // Optional: If consistent with payment history
+            .maybeSingle(); // Just get one if exists
+        
+        if (paymentData != null) {
+          final amount = paymentData['amount_paid'] as num? ?? 0;
+          feeStatus = amount > 0 ? 'Paid' : 'Pending';
+        }
+      }
+
+      // Save all details locally
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('student_id', studentId);
+      await prefs.setString('full_name', studentData['full_name']?.toString() ?? 'Student');
+      await prefs.setString('email', studentData['email']?.toString() ?? '');
+      await prefs.setString('branch', studentData['course']?.toString() ?? 'Unknown Branch'); // Mapping 'course' to 'branch'
+      await prefs.setString('bus_number', busNumber);
+      await prefs.setString('bus_stop', busStop);
+      await prefs.setString('fee_status', feeStatus);
+      await prefs.setString('arrival_time', arrivalTime);
+      
+      Navigator.pushReplacementNamed(context, '/home');
+    } else {
+        // Not registered
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+          
+          await Supabase.instance.client.auth.signOut();
+          await _googleSignIn.signOut();
+          
+          if (mounted) {
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => AlertDialog(
+                title: const Text('Access Denied'),
+                content: const Text('This Google account is not registered as a student.'),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    child: const Text('OK'),
+                  ),
+                ],
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
 
   void login() {
-    // Allow empty login for testing
+    // implementation for manual login if needed
     Navigator.pushReplacementNamed(context, '/home');
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    try {
+      await _googleSignIn.authenticate();
+    } catch (error) {
+       debugPrint('Google Sign In Error: $error');
+    }
   }
 
   @override
   void dispose() {
+    _authSubscription?.cancel();
+    _googleAuthSubscription?.cancel();
     idController.dispose();
     passController.dispose();
     super.dispose();
@@ -251,7 +524,11 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                   const SizedBox(height: 32),
 
                   // Social Auth
-                  Container(
+                  kIsWeb
+                  ? Center(
+                      child: web_btn.renderGoogleButton(isDark: isDark),
+                    )
+                  : Container(
                     height: 56,
                     decoration: BoxDecoration(
                       color: cardColor,
@@ -259,28 +536,30 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                       border: Border.all(color: borderColor),
                     ),
                     child: TextButton(
-                      onPressed: () {},
+                      onPressed: _isLoading ? null : _handleGoogleSignIn,
                       style: TextButton.styleFrom(
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.g_mobiledata, size: 28, color: Colors.blue),
-                          const SizedBox(width: 8),
-                          Text(
-                            "Continue with Google",
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: isDark ? Colors.white : const Color(0xFF334155),
-                              fontFamily: 'Inter',
-                            ),
+                      child: _isLoading 
+                        ? const CircularProgressIndicator()
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.g_mobiledata, size: 28, color: Colors.blue),
+                              const SizedBox(width: 8),
+                              Text(
+                                "Continue with Google",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDark ? Colors.white : const Color(0xFF334155),
+                                  fontFamily: 'Inter',
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
                     ),
                   ),
 

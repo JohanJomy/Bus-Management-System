@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'fee_payment_screen.dart';
 import 'profile_screen.dart';
 import 'live_tracking_screen.dart';
@@ -84,8 +85,35 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   }
 }
 
-class HomeContent extends StatelessWidget {
+class HomeContent extends StatefulWidget {
   const HomeContent({super.key});
+
+  @override
+  State<HomeContent> createState() => _HomeContentState();
+}
+
+class _HomeContentState extends State<HomeContent> {
+  String _busNumber = '--';
+  String _busStop = '--';
+  String _feeStatus = '--';
+  String _arrivalTime = '--:--';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStudentDetails();
+  }
+
+  Future<void> _loadStudentDetails() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _busNumber = prefs.getString('bus_number') ?? '--';
+      _busStop = prefs.getString('bus_stop') ?? '--';
+      _feeStatus = prefs.getString('fee_status') ?? 'Unpaid';
+      _arrivalTime = prefs.getString('arrival_time') ?? '--:--';
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -128,16 +156,7 @@ class HomeContent extends StatelessWidget {
                   ),
                   Row(
                     children: [
-                      GestureDetector(
-                        onTap: () {
-                          // TODO: Link notifications screen here
-                        },
-                        child: _buildHeaderIcon(
-                          Icons.notifications_outlined,
-                          isDark,
-                          hasBadge: true,
-                        ),
-                      ),
+                      // Notification Icon Removed
                       const SizedBox(width: 12),
                       GestureDetector(
                         onTap: () {
@@ -213,6 +232,7 @@ class HomeContent extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 24),
+
                     Text(
                       'Assigned Bus',
                       style: TextStyle(
@@ -222,7 +242,7 @@ class HomeContent extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '#13',
+                      _busNumber == 'N/A' || _busNumber.isEmpty ? 'N/A' : '#$_busNumber',
                       style: TextStyle(
                         fontSize: 60,
                         fontWeight: FontWeight.w900,
@@ -256,7 +276,7 @@ class HomeContent extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  '08:30 AM',
+                                  _arrivalTime,
                                   style: TextStyle(
                                     color: textColor,
                                     fontSize: 20,
@@ -346,14 +366,6 @@ class HomeContent extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  Text(
-                    'Details',
-                    style: TextStyle(
-                      color: Theme.of(context).primaryColor,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
                 ],
               ),
               const SizedBox(height: 16),
@@ -362,10 +374,10 @@ class HomeContent extends StatelessWidget {
                   Expanded(
                     child: _buildInfoCard(
                       context,
-                      Icons.person,
-                      'Driver',
-                      'Kuriakose',
-                      Colors.blue,
+                      Icons.payments_outlined,
+                      'Fee Status',
+                      _feeStatus,
+                      _feeStatus.toLowerCase() == 'paid' ? Colors.green : Colors.red,
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -373,134 +385,18 @@ class HomeContent extends StatelessWidget {
                     child: _buildInfoCard(
                       context,
                       Icons.alt_route,
-                      'Route',
-                      'Thiruvalla',
+                      'Bus Stop',
+                      _busStop,
                       Colors.purple,
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 16),
-
-              // Fee Status Card
-              GestureDetector(
-                onTap: () {
-                  final state =
-                      context.findAncestorStateOfType<_StudentHomeScreenState>();
-                  state?._handleNavTap(2);
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF137FEC), Color(0xFF1D4ED8)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF137FEC).withOpacity(0.3),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      )
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'FEE STATUS',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.0,
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Up to Date',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Next payment: Sept 5th',
-                            style: TextStyle(
-                              color: Colors.white60,
-                              fontSize: 10,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.white.withOpacity(0.2)),
-                        ),
-                        child: const Text(
-                          'History',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      )
-                    ],
-                  ),
-                ),
-              ),
             ],
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildHeaderIcon(IconData icon, bool isDark, {bool hasBadge = false}) {
-    return Stack(
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E293B) : Colors.white,
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: isDark ? const Color(0xFF334155) : Colors.grey[100]!,
-            ),
-          ),
-          child: Icon(icon, size: 22, color: isDark ? Colors.white : Colors.grey[800]),
-        ),
-        if (hasBadge)
-          Positioned(
-            top: 2,
-            right: 2,
-            child: Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(
-                color: const Color(0xFF137FEC),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                  width: 2,
-                ),
-              ),
-            ),
-          )
-      ],
     );
   }
 
@@ -523,8 +419,7 @@ class HomeContent extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 40,
-            height: 40,
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
@@ -540,6 +435,7 @@ class HomeContent extends StatelessWidget {
               fontWeight: FontWeight.w500,
             ),
           ),
+          const SizedBox(height: 4),
           Text(
             value,
             style: TextStyle(

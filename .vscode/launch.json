@@ -1,0 +1,38 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "bms_student (Web Port 6969)",
+            "request": "launch",
+            "type": "dart",
+            "program": "bms_student/lib/main.dart",
+            "cwd": "bms_student",
+            "args": [
+                "--web-port",
+                "6969"
+            ]
+        },
+        {
+            "name": "bms_admin (Web Port 5001)",
+            "request": "launch",
+            "type": "dart",
+            "program": "bms_admin/lib/main.dart",
+             "cwd": "bms_admin",
+            "args": [
+                "--web-port",
+                "5001"
+            ]
+        },
+        {
+            "name": "bms_driver (Web Port 5002)",
+            "request": "launch",
+            "type": "dart",
+            "program": "bms_driver/lib/main.dart",
+             "cwd": "bms_driver",
+            "args": [
+                "--web-port",
+                "5002"
+            ]
+        }
+    ]
+}
