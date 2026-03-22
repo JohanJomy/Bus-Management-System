@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'fleet_management_screen.dart';
 import 'fee_management_screen.dart';
-import 'notifications_screen.dart';
-import 'reports_screen.dart';
 import 'settings_screen.dart';
 import 'bus_wise_student_screen.dart';
 import 'student_management_screen.dart';
 import 'boarding_list_screen.dart';
+import 'route_mapping_screen.dart';
 import 'app_theme.dart';
+import '../services/fee_metrics_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -29,16 +30,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     const BusWiseStudentListScreen(),
     const StudentManagementScreen(),
     const BoardingListScreen(),
-    Builder(
-      builder: (ctx) => Center(
-        child: Text(
-          "Route Planning Page",
-          style: TextStyle(fontSize: 24, color: onSurface(ctx)),
-        ),
-      ),
-    ),
-    const NotificationsScreen(),
-    const ReportsScreen(),
+    const RouteMappingScreen(),
     const SettingsScreen(),
   ];
 
@@ -95,14 +87,14 @@ class MainDashboardView extends StatelessWidget {
       padding: const EdgeInsets.all(32.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          WelcomeSection(),
-          SizedBox(height: 32),
-          MetricsGrid(),
-          SizedBox(height: 32),
-          MiddleLayout(),
-          SizedBox(height: 32),
-          FleetTrackingOverview(),
+        children: [
+          const WelcomeSection(),
+          const SizedBox(height: 32),
+          const MetricsGrid(),
+          const SizedBox(height: 32),
+          const MiddleLayout(),
+          const SizedBox(height: 32),
+          const FleetTrackingOverview(),
         ],
       ),
     );
@@ -153,7 +145,7 @@ class Header extends StatelessWidget {
           const SizedBox(width: 16),
           CircleAvatar(
             radius: 16,
-            backgroundColor: dark ? const Color(0xFF334155) : Colors.blueAccent,
+            backgroundColor: Theme.of(context).primaryColor,
             child: const Icon(Icons.person, size: 20, color: Colors.white),
           ),
           const SizedBox(width: 8),
@@ -198,33 +190,144 @@ class WelcomeSection extends StatelessWidget {
 // --- RESTORED: Metrics Grid ---
 class MetricsGrid extends StatelessWidget {
   const MetricsGrid({super.key});
+
+  double _asDouble(dynamic value) {
+    if (value is num) {
+      return value.toDouble();
+    }
+    return double.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  int? _asInt(dynamic value) {
+    if (value is int) {
+      return value;
+    }
+    if (value is num) {
+      return value.toInt();
+    }
+    return int.tryParse(value?.toString() ?? '');
+  }
+
+  String _formatCount(int value) {
+    final raw = value.toString();
+    final buffer = StringBuffer();
+    for (int i = 0; i < raw.length; i++) {
+      if (i != 0 && (raw.length - i) % 3 == 0) {
+        buffer.write(',');
+      }
+      buffer.write(raw[i]);
+    }
+    return buffer.toString();
+  }
+
+  String _formatInrShort(double amount) {
+    if (amount >= 10000000) {
+      return '₹${(amount / 10000000).toStringAsFixed(1)}Cr';
+    }
+    if (amount >= 100000) {
+      return '₹${(amount / 100000).toStringAsFixed(1)}L';
+    }
+    if (amount >= 1000) {
+      return '₹${(amount / 1000).toStringAsFixed(1)}k';
+    }
+    return '₹${amount.toStringAsFixed(0)}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final crossAxisCount = screenWidth > 1200 ? 4 : screenWidth > 768 ? 2 : 1;
-    
-    return GridView.count(
-      physics: const NeverScrollableScrollPhysics(),
-      shrinkWrap: true,
-      crossAxisCount: crossAxisCount,
-      crossAxisSpacing: 16,
-      mainAxisSpacing: 16,
-      childAspectRatio: 2,
-      children: const [
-        MetricCard(
-          title: "ACTIVE BUSES",
-          value: "42",
-          icon: Icons.directions_bus,
-        ),
-        MetricCard(title: "TOTAL STUDENTS", value: "1,250", icon: Icons.group),
-        MetricCard(
-          title: "PENDING FEES",
-          value: "\$12k",
-          icon: Icons.warning,
-          color: Colors.red,
-        ),
-        MetricCard(title: "TRIPS TODAY", value: "84", icon: Icons.route),
-      ],
+    final crossAxisCount = screenWidth > 1200
+        ? 3
+        : screenWidth > 768
+        ? 2
+        : 1;
+    final client = Supabase.instance.client;
+
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: client.from('buses').stream(primaryKey: ['id']),
+      builder: (context, busesSnapshot) {
+        if (!busesSnapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        return StreamBuilder<List<Map<String, dynamic>>>(
+          stream: client.from('students').stream(primaryKey: ['id']),
+          builder: (context, studentsSnapshot) {
+            if (!studentsSnapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            return StreamBuilder<List<Map<String, dynamic>>>(
+              stream: client.from('stops').stream(primaryKey: ['id']),
+              builder: (context, stopsSnapshot) {
+                if (!stopsSnapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                return StreamBuilder<List<Map<String, dynamic>>>(
+                  stream: client.from('payments').stream(primaryKey: ['id']),
+                  builder: (context, paymentsSnapshot) {
+                    if (!paymentsSnapshot.hasData) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    final buses = busesSnapshot.data!;
+                    final students = studentsSnapshot.data!;
+                    final stops = stopsSnapshot.data!;
+                    final payments = paymentsSnapshot.data!;
+                    final feeMetrics = FeeMetricsService.compute(
+                      stops: stops,
+                      students: students,
+                      payments: payments,
+                    );
+
+                    return LayoutBuilder(
+                      builder: (context, constraints) {
+                        final maxGridWidth = screenWidth > 1400
+                            ? 1120.0
+                            : constraints.maxWidth;
+                        return Center(
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(maxWidth: maxGridWidth),
+                            child: GridView.count(
+                              physics: const NeverScrollableScrollPhysics(),
+                              shrinkWrap: true,
+                              crossAxisCount: crossAxisCount,
+                              crossAxisSpacing: 18,
+                              mainAxisSpacing: 18,
+                              childAspectRatio: 2.35,
+                              children: [
+                                MetricCard(
+                                  title: "ACTIVE BUSES",
+                                  value: _formatCount(buses.length),
+                                  icon: Icons.directions_bus,
+                                ),
+                                MetricCard(
+                                  title: "TOTAL STUDENTS",
+                                  value: _formatCount(students.length),
+                                  icon: Icons.group,
+                                ),
+                                MetricCard(
+                                  title: "PENDING FEES",
+                                  value: _formatInrShort(
+                                    feeMetrics.pendingAmount,
+                                  ),
+                                  icon: Icons.warning,
+                                  color: Theme.of(context).colorScheme.error,
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                );
+              },
+            );
+          },
+        );
+      },
     );
   }
 }
@@ -244,7 +347,7 @@ class MetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       decoration: BoxDecoration(
         color: surfaceColor(context),
         borderRadius: BorderRadius.circular(12),
@@ -252,8 +355,8 @@ class MetricCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(icon, color: color ?? const Color(0xFF195DE6), size: 32),
-          const SizedBox(width: 16),
+          Icon(icon, color: color ?? Theme.of(context).primaryColor, size: 30),
+          const SizedBox(width: 14),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
@@ -269,7 +372,7 @@ class MetricCard extends StatelessWidget {
               Text(
                 value,
                 style: TextStyle(
-                  fontSize: 20,
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: onSurface(context),
                 ),
@@ -339,7 +442,7 @@ class MiddleLayout extends StatelessWidget {
           const SizedBox(height: 8),
           LinearProgressIndicator(
             value: progress,
-            color: const Color(0xFF195DE6),
+            color: Theme.of(context).primaryColor,
             backgroundColor: inputFillColor(context),
           ),
         ],
@@ -368,11 +471,14 @@ class FleetTrackingOverview extends StatelessWidget {
             TileLayer(
               urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
             ),
-            const MarkerLayer(
+            MarkerLayer(
               markers: [
                 Marker(
-                  point: LatLng(9.5107, 76.5511),
-                  child: Icon(Icons.directions_bus, color: Color(0xFF195DE6)),
+                  point: const LatLng(9.5107, 76.5511),
+                  child: Icon(
+                    Icons.directions_bus,
+                    color: Theme.of(context).primaryColor,
+                  ),
                 ),
               ],
             ),
@@ -397,11 +503,19 @@ class Sidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final sidebarWidth = screenWidth > 1024 ? 260.0 : screenWidth > 768 ? 200.0 : 70.0;
+    final sidebarWidth = screenWidth > 1024
+        ? 260.0
+        : screenWidth > 768
+        ? 200.0
+        : 70.0;
+    final dark = isDark(context);
     return Container(
       width: sidebarWidth,
       color: surfaceColor(context),
-      padding: EdgeInsets.symmetric(vertical: 24, horizontal: screenWidth > 768 ? 12 : 0),
+      padding: EdgeInsets.symmetric(
+        vertical: 24,
+        horizontal: screenWidth > 768 ? 12 : 0,
+      ),
       child: SingleChildScrollView(
         child: Column(
           children: [
@@ -412,12 +526,15 @@ class Sidebar extends StatelessWidget {
             _navItem(context, Icons.commute_outlined, "Fleet Management", 2),
             _navItem(context, Icons.groups_outlined, "Bus-wise Students", 3),
             _navItem(context, Icons.person_outline, "Student Management", 4),
-            _navItem(context, Icons.location_city_outlined, "Boarding Stops", 5),
-            _navItem(context, Icons.map_outlined, "Route Planning", 6),
-            _navItem(context, Icons.notifications_none, "Notifications", 7),
-            _navItem(context, Icons.analytics_outlined, "Reports", 8),
+            _navItem(
+              context,
+              Icons.location_city_outlined,
+              "Boarding Stops",
+              5,
+            ),
+            _navItem(context, Icons.map_outlined, "Route Mapping", 6),
             const SizedBox(height: 16),
-            _navItem(context, Icons.settings_outlined, "Settings", 9),
+            _navItem(context, Icons.settings_outlined, "Settings", 7),
             const SizedBox(height: 8),
           ],
         ),
@@ -435,7 +552,7 @@ class Sidebar extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: const Color(0xFF195DE6),
+                color: Theme.of(context).primaryColor,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(
@@ -445,45 +562,45 @@ class Sidebar extends StatelessWidget {
               ),
             )
           : Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: const Color(0xFF195DE6),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(
-              Icons.directions_bus,
-              color: Colors.white,
-              size: 22,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "BusAdmin Pro",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                  color: onSurface(context),
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).primaryColor,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.directions_bus,
+                    color: Colors.white,
+                    size: 22,
+                  ),
                 ),
-              ),
-              Text(
-                "MANAGEMENT SUITE",
-                style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1.2,
-                  color: onSurfaceVariant(context),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "BusAdmin Pro",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: onSurface(context),
+                      ),
+                    ),
+                    Text(
+                      "MANAGEMENT SUITE",
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 1.2,
+                        color: onSurfaceVariant(context),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
-        ],
-      ),
+              ],
+            ),
     );
   }
 
@@ -499,7 +616,7 @@ class Sidebar extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         decoration: BoxDecoration(
-          color: isActive ? const Color(0xFF195DE6) : Colors.transparent,
+          color: isActive ? Theme.of(context).primaryColor : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
         ),
         child: ListTile(

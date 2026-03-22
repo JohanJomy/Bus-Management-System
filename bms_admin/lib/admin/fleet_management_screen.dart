@@ -51,8 +51,12 @@ class _FleetManagementScreenState extends State<FleetManagementScreen> {
 
   Future<void> _editBusDialog(Bus bus) async {
     final formKey = GlobalKey<FormState>();
-    final numberController = TextEditingController(text: bus.busNumber.toString());
-    final capacityController = TextEditingController(text: bus.totalCapacity.toString());
+    final numberController = TextEditingController(
+      text: bus.busNumber.toString(),
+    );
+    final capacityController = TextEditingController(
+      text: bus.totalCapacity.toString(),
+    );
 
     showDialog(
       context: context,
@@ -76,7 +80,9 @@ class _FleetManagementScreenState extends State<FleetManagementScreen> {
                 TextFormField(
                   controller: capacityController,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Total Capacity'),
+                  decoration: const InputDecoration(
+                    labelText: 'Total Capacity',
+                  ),
                   validator: (val) => (val == null || val.isEmpty)
                       ? 'Required'
                       : (int.tryParse(val) == null ? 'Invalid number' : null),
@@ -103,7 +109,11 @@ class _FleetManagementScreenState extends State<FleetManagementScreen> {
                   if (mounted) {
                     Navigator.pop(ctx);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Bus #${numberController.text} updated successfully')),
+                      SnackBar(
+                        content: Text(
+                          'Bus #${numberController.text} updated successfully',
+                        ),
+                      ),
                     );
                   }
                 } catch (e) {
@@ -137,7 +147,11 @@ class _FleetManagementScreenState extends State<FleetManagementScreen> {
                 if (mounted) {
                   Navigator.pop(ctx);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Bus #${bus.busNumber} deleted successfully')),
+                    SnackBar(
+                      content: Text(
+                        'Bus #${bus.busNumber} deleted successfully',
+                      ),
+                    ),
                   );
                 }
               } catch (e) {
@@ -185,7 +199,9 @@ class _FleetManagementScreenState extends State<FleetManagementScreen> {
                 TextFormField(
                   controller: capacityController,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Total Capacity'),
+                  decoration: const InputDecoration(
+                    labelText: 'Total Capacity',
+                  ),
                   validator: (val) => (val == null || val.isEmpty)
                       ? 'Required'
                       : (int.tryParse(val) == null ? 'Invalid number' : null),
@@ -220,68 +236,83 @@ class _FleetManagementScreenState extends State<FleetManagementScreen> {
   Widget build(BuildContext context) {
     return _isLoading
         ? const Center(child: CircularProgressIndicator())
-        : SingleChildScrollView(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        : LayoutBuilder(
+            builder: (context, constraints) {
+              final isCompact = constraints.maxWidth < 760;
+
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Bus & Fleet Management',
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.bold),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      alignment: WrapAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Bus & Fleet Management',
+                          style: Theme.of(context).textTheme.headlineSmall
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: _showAddBusDialog,
+                          icon: const Icon(Icons.add),
+                          label: const Text('Add Bus'),
+                        ),
+                      ],
                     ),
-                    ElevatedButton.icon(
-                      onPressed: _showAddBusDialog,
-                      icon: const Icon(Icons.add),
-                      label: const Text('Add Bus'),
-                    ),
+                    SizedBox(height: isCompact ? 16 : 24),
+                    _buildSummaryCards(isCompact: isCompact),
+                    SizedBox(height: isCompact ? 16 : 24),
+                    _buildInventoryTable(),
                   ],
                 ),
-                const SizedBox(height: 24),
-                _buildSummaryCards(),
-                const SizedBox(height: 24),
-                _buildInventoryTable(),
-              ],
-            ),
+              );
+            },
           );
   }
 
-  Widget _buildSummaryCards() {
-    return Wrap(
-      spacing: 16,
-      runSpacing: 16,
-      children: [
-        _SummaryCard(
-          title: 'Total Buses',
-          value: _buses.length.toString(),
-          icon: Icons.directions_bus,
-          color: Colors.blue,
-        ),
-        _SummaryCard(
-          title: 'Total Capacity',
-          value: _buses.isEmpty
-              ? '0'
-              : _buses
-                  .fold<int>(0, (sum, b) => sum + b.totalCapacity)
-                  .toString(),
-          icon: Icons.group,
-          color: Colors.green,
-        ),
-        _SummaryCard(
-          title: 'Avg Capacity',
-          value: _buses.isEmpty
-              ? '0'
-              : (_buses.fold<int>(0, (sum, b) => sum + b.totalCapacity) ~/
+  Widget _buildSummaryCards({required bool isCompact}) {
+    final cards = [
+      _SummaryCard(
+        title: 'Total Buses',
+        value: _buses.length.toString(),
+        icon: Icons.directions_bus,
+        color: Colors.blue,
+      ),
+      _SummaryCard(
+        title: 'Total Capacity',
+        value: _buses.isEmpty
+            ? '0'
+            : _buses.fold<int>(0, (sum, b) => sum + b.totalCapacity).toString(),
+        icon: Icons.group,
+        color: Colors.green,
+      ),
+      _SummaryCard(
+        title: 'Avg Capacity',
+        value: _buses.isEmpty
+            ? '0'
+            : (_buses.fold<int>(0, (sum, b) => sum + b.totalCapacity) ~/
                       _buses.length)
                   .toString(),
-          icon: Icons.bar_chart,
-          color: Colors.orange,
-        ),
+        icon: Icons.bar_chart,
+        color: Colors.orange,
+      ),
+    ];
+
+    if (isCompact) {
+      return Wrap(spacing: 16, runSpacing: 16, children: cards);
+    }
+
+    return Row(
+      children: [
+        Expanded(child: cards[0]),
+        const SizedBox(width: 16),
+        Expanded(child: cards[1]),
+        const SizedBox(width: 16),
+        Expanded(child: cards[2]),
       ],
     );
   }
@@ -292,8 +323,10 @@ class _FleetManagementScreenState extends State<FleetManagementScreen> {
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Center(
-            child: Text('No buses found',
-                style: Theme.of(context).textTheme.bodyLarge),
+            child: Text(
+              'No buses found',
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
           ),
         ),
       );
@@ -303,7 +336,7 @@ class _FleetManagementScreenState extends State<FleetManagementScreen> {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final isSmallScreen = constraints.maxWidth < 600;
-          
+
           if (isSmallScreen) {
             // Mobile: Card-based list view
             return SingleChildScrollView(
@@ -312,59 +345,117 @@ class _FleetManagementScreenState extends State<FleetManagementScreen> {
               ),
             );
           } else {
-            // Desktop: DataTable
-            return SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columns: const [
-                  DataColumn(label: Text('Bus #')),
-                  DataColumn(label: Text('Capacity')),
-                  DataColumn(label: Text('Bus ID')),
-                  DataColumn(label: Text('Status')),
-                  DataColumn(label: Text('Actions')),
-                ],
-                rows: _buses
-                    .map((bus) => DataRow(
-                  cells: [
-                    DataCell(Text('#${bus.busNumber}')),
-                    DataCell(Text('${bus.totalCapacity}')),
-                    DataCell(Text('BUS-${bus.id}')),
-                    DataCell(Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.green[100],
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        'ACTIVE',
-                        style: TextStyle(
-                          color: Colors.green[700],
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+            // Desktop: flexible full-width table-like layout
+            final dividerColor = Colors.grey[200]!;
+            return Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 14,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(12),
+                      topRight: Radius.circular(12),
+                    ),
+                  ),
+                  child: Row(
+                    children: const [
+                      Expanded(flex: 2, child: Text('BUS #')),
+                      Expanded(flex: 2, child: Text('CAPACITY')),
+                      Expanded(flex: 2, child: Text('BUS ID')),
+                      Expanded(flex: 2, child: Text('STATUS')),
+                      Expanded(
+                        flex: 2,
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: Text('ACTIONS'),
                         ),
                       ),
-                    )),
-                    DataCell(Row(
-                      mainAxisSize: MainAxisSize.min,
+                    ],
+                  ),
+                ),
+                ..._buses.map(
+                  (bus) => Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 14,
+                    ),
+                    decoration: BoxDecoration(
+                      border: Border(top: BorderSide(color: dividerColor)),
+                    ),
+                    child: Row(
                       children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit, size: 18),
-                          onPressed: () => _editBusDialog(bus),
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            '#${bus.busNumber}',
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.delete, size: 18),
-                          color: Colors.red,
-                          onPressed: () => _deleteBus(bus),
+                        Expanded(flex: 2, child: Text('${bus.totalCapacity}')),
+                        Expanded(flex: 2, child: Text('BUS-${bus.id}')),
+                        Expanded(
+                          flex: 2,
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.green[100],
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'ACTIVE',
+                                style: TextStyle(
+                                  color: Colors.green[700],
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Align(
+                            alignment: Alignment.centerRight,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.edit, size: 18),
+                                  padding: const EdgeInsets.all(4),
+                                  constraints: const BoxConstraints(
+                                    minWidth: 30,
+                                    minHeight: 30,
+                                  ),
+                                  onPressed: () => _editBusDialog(bus),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete, size: 18),
+                                  color: Colors.red,
+                                  padding: const EdgeInsets.all(4),
+                                  constraints: const BoxConstraints(
+                                    minWidth: 30,
+                                    minHeight: 30,
+                                  ),
+                                  onPressed: () => _deleteBus(bus),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ],
-                    )),
-                  ],
-                ))
-                    .toList(),
-              ),
+                    ),
+                  ),
+                ),
+              ],
             );
           }
         },
@@ -418,10 +509,14 @@ class _FleetManagementScreenState extends State<FleetManagementScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('ID: BUS-${bus.id}',
-                          style: const TextStyle(fontSize: 12)),
-                      Text('Capacity: ${bus.totalCapacity}',
-                          style: const TextStyle(fontSize: 12)),
+                      Text(
+                        'ID: BUS-${bus.id}',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      Text(
+                        'Capacity: ${bus.totalCapacity}',
+                        style: const TextStyle(fontSize: 12),
+                      ),
                     ],
                   ),
                   Row(
@@ -463,7 +558,6 @@ class _SummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 240,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
@@ -490,10 +584,7 @@ class _SummaryCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             value,
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
           ),
         ],
       ),

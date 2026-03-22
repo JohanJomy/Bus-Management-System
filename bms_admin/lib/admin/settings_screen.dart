@@ -67,7 +67,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final isSmallScreen = constraints.maxWidth < 400;
-                
+
                 if (isSmallScreen) {
                   // Mobile: Stack vertically
                   return Column(
@@ -230,7 +230,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final isSmallScreen = constraints.maxWidth < 400;
-                
+
                 if (isSmallScreen) {
                   // Mobile: Stack vertically
                   return Column(
@@ -256,7 +256,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           "(GMT+00:00) UTC",
                           "(GMT+05:30) India Standard Time",
                         ],
-                        onChanged: (v) => setState(() => _selectedTimezone = v!),
+                        onChanged: (v) =>
+                            setState(() => _selectedTimezone = v!),
                       ),
                     ],
                   );
@@ -287,7 +288,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             "(GMT+00:00) UTC",
                             "(GMT+05:30) India Standard Time",
                           ],
-                          onChanged: (v) => setState(() => _selectedTimezone = v!),
+                          onChanged: (v) =>
+                              setState(() => _selectedTimezone = v!),
                         ),
                       ),
                     ],
@@ -302,21 +304,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
           LayoutBuilder(
             builder: (context, constraints) {
               final isSmallScreen = constraints.maxWidth < 600;
-              
+
               final securityCard = _sectionCard(
                 context: context,
                 icon: Icons.shield_outlined,
                 title: "Security",
                 child: _buildSecurityContent(),
               );
-              
+
               final notificationsCard = _sectionCard(
                 context: context,
                 icon: Icons.notifications_active_outlined,
                 title: "Notifications",
                 child: _buildNotificationsContent(),
               );
-              
+
               if (isSmallScreen) {
                 // Mobile: Stack vertically
                 return Column(
@@ -444,10 +446,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 4),
             Text(
               "Last changed 3 months ago",
-              style: TextStyle(
-                fontSize: 12,
-                color: onSurfaceVariant(context),
-              ),
+              style: TextStyle(fontSize: 12, color: onSurfaceVariant(context)),
             ),
           ],
         ),
@@ -456,10 +455,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           style: OutlinedButton.styleFrom(
             side: BorderSide(color: borderColor(context)),
             foregroundColor: onSurface(context),
-            padding: const EdgeInsets.symmetric(
-              horizontal: 20,
-              vertical: 12,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
             ),

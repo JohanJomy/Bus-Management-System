@@ -1,6 +1,8 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import '../models/student_model.dart';
 import '../services/student_service.dart';
+import 'app_theme.dart';
 
 class StudentManagementScreen extends StatefulWidget {
   const StudentManagementScreen({super.key});
@@ -12,12 +14,12 @@ class StudentManagementScreen extends StatefulWidget {
 
 class _StudentManagementScreenState extends State<StudentManagementScreen> {
   final StudentService _studentService = StudentService();
-  
+  final TextEditingController _searchController = TextEditingController();
+
   List<Student> _students = [];
   List<Student> _filteredStudents = [];
   bool _isLoading = true;
   String? _errorMessage;
-  TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -49,26 +51,54 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
   }
 
   void _filterStudents() {
-    final query = _searchController.text.toLowerCase();
+    final query = _searchController.text.toLowerCase().trim();
     setState(() {
       _filteredStudents = _students
-          .where((student) =>
-              student.fullName.toLowerCase().contains(query) ||
-              student.email.toLowerCase().contains(query))
+          .where(
+            (student) =>
+                student.fullName.toLowerCase().contains(query) ||
+                student.email.toLowerCase().contains(query),
+          )
           .toList();
     });
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  String _initials(String fullName) {
+    final parts = fullName
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((p) => p.isNotEmpty)
+        .toList();
+    if (parts.isEmpty) return 'NA';
+    if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
+    return (parts.first[0] + parts[1][0]).toUpperCase();
+  }
+
+  Color _courseChipColor(BuildContext context, String? course) {
+    final c = (course ?? '').toLowerCase();
+    if (c.contains('robotics') || c.contains('automation')) {
+      return Theme.of(context).primaryColor.withValues(alpha: 0.1);
+    }
+    if (c.contains('computer') || c.contains('engineering')) {
+      return Theme.of(context).primaryColor.withValues(alpha: 0.15);
+    }
+    if (c.contains('food') || c.contains('technology')) {
+      return Theme.of(context).primaryColor.withValues(alpha: 0.2);
+    }
+    return inputFillColor(context);
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      color: bgColor(context),
+      padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -77,38 +107,43 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
             children: [
               Text(
                 'Student Management',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w700,
+                  color: onSurface(context),
                 ),
               ),
               ElevatedButton.icon(
-                onPressed: () => _showAddStudentDialog(),
-                icon: const Icon(Icons.add),
+                onPressed: _showAddStudentDialog,
+                icon: const Icon(Icons.add, size: 18),
                 label: const Text('Add Student'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).primaryColor,
+                  foregroundColor: Colors.white,
+                  elevation: 2,
+                  shadowColor: Theme.of(
+                    context,
+                  ).primaryColor.withValues(alpha: 0.3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 14,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          // Search Bar
-          TextField(
-            controller: _searchController,
-            decoration: InputDecoration(
-              hintText: 'Search students by name or email...',
-              prefixIcon: const Icon(Icons.search),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           if (_isLoading)
-            const Expanded(
-              child: Center(child: CircularProgressIndicator()),
-            )
+            const Expanded(child: Center(child: CircularProgressIndicator()))
           else if (_errorMessage != null)
-            Expanded(
-              child: Center(child: Text(_errorMessage!)),
-            )
+            Expanded(child: Center(child: Text(_errorMessage!)))
           else if (_filteredStudents.isEmpty)
             Expanded(
               child: Center(
@@ -120,66 +155,352 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
             )
           else
             Expanded(
-              child: Card(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: surfaceColor(context),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: borderColor(context)),
+                ),
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    final isSmallScreen = constraints.maxWidth < 600;
-                    
+                    final isSmallScreen = constraints.maxWidth < 760;
+
                     if (isSmallScreen) {
-                      // Mobile: Card-based list
-                      return SingleChildScrollView(
-                        child: Column(
-                          children: _filteredStudents
-                              .map((student) => Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: _buildStudentCard(student),
-                          ))
-                              .toList(),
-                        ),
-                      );
-                    } else {
-                      // Desktop: DataTable
-                      return SingleChildScrollView(
-                        child: DataTable(
-                          columns: const [
-                            DataColumn(label: Text('Name')),
-                            DataColumn(label: Text('Email')),
-                            DataColumn(label: Text('Course')),
-                            DataColumn(label: Text('Semester')),
-                            DataColumn(label: Text('Actions')),
-                          ],
-                          rows: _filteredStudents.map((student) {
-                            return DataRow(
-                              cells: [
-                                DataCell(Text(student.fullName)),
-                                DataCell(Text(student.email)),
-                                DataCell(Text(student.course ?? 'N/A')),
-                                DataCell(Text(student.semester?.toString() ?? 'N/A')),
-                                DataCell(
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      IconButton(
-                                        icon: const Icon(Icons.edit),
-                                        onPressed: () =>
-                                            _showEditStudentDialog(student),
-                                        tooltip: 'Edit',
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(Icons.delete),
-                                        onPressed: () =>
-                                            _showDeleteConfirmation(student),
-                                        tooltip: 'Delete',
-                                      ),
-                                    ],
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(18, 16, 18, 8),
+                            child: Text(
+                              'Active Student Directory',
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w700,
+                                color: onSurface(context),
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
+                            child: TextField(
+                              controller: _searchController,
+                              decoration: InputDecoration(
+                                hintText: 'Search students by name or email...',
+                                prefixIcon: const Icon(Icons.search),
+                                filled: true,
+                                fillColor: inputFillColor(context),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(
+                                    color: borderColor(context),
                                   ),
                                 ),
-                              ],
-                            );
-                          }).toList(),
-                        ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(
+                                    color: borderColor(context),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const Divider(height: 1),
+                          Expanded(
+                            child: ListView.builder(
+                              itemCount: _filteredStudents.length,
+                              itemBuilder: (context, index) => Padding(
+                                padding: const EdgeInsets.all(8),
+                                child: _buildStudentCard(
+                                  _filteredStudents[index],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       );
                     }
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                          child: Text(
+                            'Active Student Directory',
+                            style: TextStyle(
+                              fontSize: 30,
+                              fontWeight: FontWeight.w700,
+                              color: onSurface(context),
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 14),
+                          child: TextField(
+                            controller: _searchController,
+                            decoration: InputDecoration(
+                              hintText: 'Search students by name or email...',
+                              prefixIcon: const Icon(Icons.search),
+                              filled: true,
+                              fillColor: inputFillColor(context),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(
+                                  color: borderColor(context),
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(
+                                  color: borderColor(context),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const Divider(height: 1),
+                        Container(
+                          color: inputFillColor(context),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 10,
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                flex: 3,
+                                child: Text(
+                                  'NAME',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.8,
+                                    color: onSurfaceVariant(context),
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                flex: 3,
+                                child: Text(
+                                  'EMAIL',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.8,
+                                    color: onSurfaceVariant(context),
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                flex: 3,
+                                child: Text(
+                                  'COURSE',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.8,
+                                    color: onSurfaceVariant(context),
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                flex: 2,
+                                child: Text(
+                                  'SEMESTER',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.8,
+                                    color: onSurfaceVariant(context),
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  'ACTIONS',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.8,
+                                    color: onSurfaceVariant(context),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: ListView.separated(
+                            itemCount: _filteredStudents.length,
+                            separatorBuilder: (_, __) =>
+                                const Divider(height: 1),
+                            itemBuilder: (context, index) {
+                              final student = _filteredStudents[index];
+                              final sem = student.semester ?? 0;
+                              final semProgress = sem <= 0
+                                  ? 0.0
+                                  : (sem.clamp(1, 8) / 8);
+
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 11,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      flex: 3,
+                                      child: Row(
+                                        children: [
+                                          CircleAvatar(
+                                            radius: 16,
+                                            backgroundColor: Theme.of(context)
+                                                .primaryColor
+                                                .withValues(alpha: 0.1),
+                                            child: Text(
+                                              _initials(student.fullName),
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w700,
+                                                color: Theme.of(
+                                                  context,
+                                                ).primaryColor,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: Text(
+                                              student.fullName,
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                                color: onSurface(context),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Expanded(
+                                      flex: 3,
+                                      child: Text(
+                                        student.email,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: onSurfaceVariant(context),
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      flex: 3,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 7,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: _courseChipColor(
+                                            context,
+                                            student.course,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          student.course?.isNotEmpty == true
+                                              ? student.course!
+                                              : 'N/A',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: onSurface(context),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      flex: 2,
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Semester ${student.semester ?? 'N/A'}',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                              color: onSurface(context),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Container(
+                                            height: 3,
+                                            width: 80,
+                                            decoration: BoxDecoration(
+                                              color: inputFillColor(context),
+                                              borderRadius:
+                                                  BorderRadius.circular(99),
+                                            ),
+                                            child: FractionallySizedBox(
+                                              alignment: Alignment.centerLeft,
+                                              widthFactor: semProgress,
+                                              child: Container(
+                                                decoration: BoxDecoration(
+                                                  color: Theme.of(
+                                                    context,
+                                                  ).primaryColor,
+                                                  borderRadius:
+                                                      BorderRadius.circular(99),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          IconButton(
+                                            icon: Icon(
+                                              Icons.edit,
+                                              size: 18,
+                                              color: onSurfaceVariant(context),
+                                            ),
+                                            onPressed: () =>
+                                                _showEditStudentDialog(student),
+                                            tooltip: 'Edit',
+                                          ),
+                                          IconButton(
+                                            icon: Icon(
+                                              Icons.delete,
+                                              size: 18,
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.error,
+                                            ),
+                                            onPressed: () =>
+                                                _showDeleteConfirmation(
+                                                  student,
+                                                ),
+                                            tooltip: 'Delete',
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    );
                   },
                 ),
               ),
@@ -191,6 +512,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
 
   Widget _buildStudentCard(Student student) {
     return Card(
+      color: surfaceColor(context),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -202,9 +524,10 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                 Expanded(
                   child: Text(
                     student.fullName,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
+                      color: onSurface(context),
                     ),
                   ),
                 ),
@@ -212,12 +535,19 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.edit, size: 18),
+                      icon: Icon(
+                        Icons.edit,
+                        size: 18,
+                        color: onSurfaceVariant(context),
+                      ),
                       onPressed: () => _showEditStudentDialog(student),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.delete, size: 18),
-                      color: Colors.red,
+                      icon: Icon(
+                        Icons.delete,
+                        size: 18,
+                        color: Theme.of(context).colorScheme.error,
+                      ),
                       onPressed: () => _showDeleteConfirmation(student),
                     ),
                   ],
@@ -225,9 +555,18 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
               ],
             ),
             const SizedBox(height: 8),
-            Text('Email: ${student.email}', style: const TextStyle(fontSize: 12)),
-            Text('Course: ${student.course ?? 'N/A'}', style: const TextStyle(fontSize: 12)),
-            Text('Semester: ${student.semester ?? 'N/A'}', style: const TextStyle(fontSize: 12)),
+            Text(
+              'Email: ${student.email}',
+              style: TextStyle(fontSize: 12, color: onSurfaceVariant(context)),
+            ),
+            Text(
+              'Course: ${student.course ?? 'N/A'}',
+              style: TextStyle(fontSize: 12, color: onSurfaceVariant(context)),
+            ),
+            Text(
+              'Semester: ${student.semester ?? 'N/A'}',
+              style: TextStyle(fontSize: 12, color: onSurfaceVariant(context)),
+            ),
           ],
         ),
       ),
@@ -260,9 +599,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Student'),
-        content: Text(
-          'Are you sure you want to delete ${student.fullName}?',
-        ),
+        content: Text('Are you sure you want to delete ${student.fullName}?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -283,13 +620,13 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                 }
               } catch (e) {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error: $e')),
-                );
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text('Error: $e')));
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: Theme.of(context).colorScheme.error,
             ),
             child: const Text('Delete'),
           ),
@@ -321,15 +658,28 @@ class _StudentEditDialogState extends State<_StudentEditDialog> {
   int? _semester;
   bool _isLoading = false;
 
+  String _generateUuidV4() {
+    final random = Random.secure();
+    final bytes = List<int>.generate(16, (_) => random.nextInt(256));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+
+    String hexByte(int value) => value.toRadixString(16).padLeft(2, '0');
+    final hex = bytes.map(hexByte).join();
+    return '${hex.substring(0, 8)}-'
+        '${hex.substring(8, 12)}-'
+        '${hex.substring(12, 16)}-'
+        '${hex.substring(16, 20)}-'
+        '${hex.substring(20, 32)}';
+  }
+
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(
       text: widget.student?.fullName ?? '',
     );
-    _emailController = TextEditingController(
-      text: widget.student?.email ?? '',
-    );
+    _emailController = TextEditingController(text: widget.student?.email ?? '');
     _courseController = TextEditingController(
       text: widget.student?.course ?? '',
     );
@@ -355,7 +705,7 @@ class _StudentEditDialogState extends State<_StudentEditDialog> {
     setState(() => _isLoading = true);
     try {
       final student = Student(
-        id: widget.student?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+        id: widget.student?.id ?? _generateUuidV4(),
         fullName: _nameController.text,
         email: _emailController.text,
         course: _courseController.text,
@@ -374,15 +724,15 @@ class _StudentEditDialogState extends State<_StudentEditDialog> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              '${widget.student != null ? "Updated" : "Added"} successfully',
+              '${widget.student != null ? 'Updated' : 'Added'} successfully',
             ),
           ),
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
       setState(() => _isLoading = false);
     }
@@ -398,23 +748,17 @@ class _StudentEditDialogState extends State<_StudentEditDialog> {
           children: [
             TextField(
               controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Full Name *',
-              ),
+              decoration: const InputDecoration(labelText: 'Full Name *'),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: _emailController,
-              decoration: const InputDecoration(
-                labelText: 'Email *',
-              ),
+              decoration: const InputDecoration(labelText: 'Email *'),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: _courseController,
-              decoration: const InputDecoration(
-                labelText: 'Course',
-              ),
+              decoration: const InputDecoration(labelText: 'Course'),
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<int>(
@@ -422,10 +766,12 @@ class _StudentEditDialogState extends State<_StudentEditDialog> {
               onChanged: (value) => setState(() => _semester = value),
               decoration: const InputDecoration(labelText: 'Semester'),
               items: List.generate(8, (i) => i + 1)
-                  .map((semester) => DropdownMenuItem(
-                    value: semester,
-                    child: Text('Semester $semester'),
-                  ))
+                  .map(
+                    (semester) => DropdownMenuItem(
+                      value: semester,
+                      child: Text('Semester $semester'),
+                    ),
+                  )
                   .toList(),
             ),
           ],

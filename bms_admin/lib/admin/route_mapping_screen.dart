@@ -361,76 +361,88 @@ class _RouteMappingScreenState extends State<RouteMappingScreen> {
                   top: 14,
                   left: 14,
                   right: 14,
-                  child: Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: 360,
-                        child: TextField(
-                          controller: _searchController,
-                          onSubmitted: _onSearchSubmitted,
-                          decoration: InputDecoration(
-                            hintText: 'Search stop name or address...',
-                            prefixIcon: const Icon(Icons.search),
-                            filled: true,
-                            fillColor: surfaceColor(context),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide(
-                                color: borderColor(context),
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide(
-                                color: borderColor(context),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      SizedBox(
-                        height: 46,
-                        child: ElevatedButton.icon(
-                          onPressed: _isSearching
-                              ? null
-                              : () =>
-                                    _onSearchSubmitted(_searchController.text),
-                          icon: _isSearching
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final searchWidth = constraints.maxWidth < 380
+                          ? constraints.maxWidth
+                          : 360.0;
+                      return Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: searchWidth,
+                            child: TextField(
+                              controller: _searchController,
+                              onSubmitted: _onSearchSubmitted,
+                              decoration: InputDecoration(
+                                hintText: 'Search stop name or address...',
+                                prefixIcon: const Icon(Icons.search),
+                                filled: true,
+                                fillColor: surfaceColor(context),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide(
+                                    color: borderColor(context),
                                   ),
-                                )
-                              : const Icon(Icons.travel_explore),
-                          label: const Text('Search'),
-                        ),
-                      ),
-                      SizedBox(
-                        height: 46,
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _isEditMode
-                                ? Theme.of(context).colorScheme.error
-                                : Theme.of(context).primaryColor,
-                            foregroundColor: Colors.white,
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide(
+                                    color: borderColor(context),
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
-                          onPressed: () {
-                            setState(() => _isEditMode = !_isEditMode);
-                          },
-                          icon: Icon(
-                            _isEditMode ? Icons.close : Icons.edit_location_alt,
+                          SizedBox(
+                            height: 46,
+                            child: ElevatedButton.icon(
+                              onPressed: _isSearching
+                                  ? null
+                                  : () => _onSearchSubmitted(
+                                      _searchController.text,
+                                    ),
+                              icon: _isSearching
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Icon(Icons.travel_explore),
+                              label: const Text('Search'),
+                            ),
                           ),
-                          label: Text(
-                            _isEditMode ? 'Exit Edit Mode' : 'Edit/Move Points',
+                          SizedBox(
+                            height: 46,
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _isEditMode
+                                    ? Theme.of(context).colorScheme.error
+                                    : Theme.of(context).primaryColor,
+                                foregroundColor: Colors.white,
+                              ),
+                              onPressed: () {
+                                setState(() => _isEditMode = !_isEditMode);
+                              },
+                              icon: Icon(
+                                _isEditMode
+                                    ? Icons.close
+                                    : Icons.edit_location_alt,
+                              ),
+                              label: Text(
+                                _isEditMode
+                                    ? 'Exit Edit Mode'
+                                    : 'Edit/Move Points',
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                    ],
+                        ],
+                      );
+                    },
                   ),
                 ),
                 Positioned(

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'app_theme.dart';
+import '../services/fee_metrics_service.dart';
 
 const Color _primaryColor = Color(0xFF195DE6);
 
@@ -8,182 +10,320 @@ class FeeManagementScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: bgColor(context),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(32.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Page title + actions
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Fees & Payments',
-                        style: TextStyle(
-                          fontSize: 30,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.5,
-                          color: onSurface(context),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Manage student transport fees, configure stop-wise charges, and monitor collection status.',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: onSurfaceVariant(context),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 8,
-                  children: [
-                    OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 14,
-                        ),
-                        foregroundColor: _primaryColor,
-                        side: BorderSide(
-                          color: _primaryColor.withValues(alpha: 0.4),
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      onPressed: () {},
-                      icon: const Icon(Icons.upload_file_outlined, size: 20),
-                      label: const Text(
-                        'Export Report',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 14,
-                        ),
-                        backgroundColor: _primaryColor,
-                        foregroundColor: Colors.white,
-                        elevation: 4,
-                        shadowColor: _primaryColor.withValues(alpha: 0.3),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      onPressed: () {},
-                      icon: const Icon(
-                        Icons.notifications_active_outlined,
-                        size: 20,
-                      ),
-                      label: const Text(
-                        'Send Reminders',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+    final client = Supabase.instance.client;
 
-            const SizedBox(height: 32),
+    final stopsStream = client
+        .from('stops')
+        .stream(primaryKey: ['id'])
+        .order('stop_name');
+    final studentsStream = client
+        .from('students')
+        .stream(primaryKey: ['id'])
+        .order('full_name');
+    final paymentsStream = client
+        .from('payments')
+        .stream(primaryKey: ['id'])
+        .order('created_at', ascending: false);
 
-            // Summary cards
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final isNarrow = constraints.maxWidth < 700;
-                final cardWidth = isNarrow
-                    ? constraints.maxWidth
-                    : (constraints.maxWidth - 16) / 2;
-                return Wrap(
-                  spacing: 16,
-                  runSpacing: 16,
-                  children: [
-                    SizedBox(
-                      width: cardWidth,
-                      child: const _SummaryCard(
-                        title: 'Total Collected',
-                        value: '\$45,000',
-                        deltaText: '+12.5%',
-                        deltaColor: Colors.green,
-                        icon: Icons.account_balance_wallet_outlined,
-                      ),
-                    ),
-                    SizedBox(
-                      width: cardWidth,
-                      child: const _SummaryCard(
-                        title: 'Pending Dues',
-                        value: '\$12,500',
-                        deltaText: '-5.2%',
-                        deltaColor: Colors.orange,
-                        icon: Icons.pending_actions_outlined,
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: stopsStream,
+      builder: (context, stopsSnapshot) {
+        if (stopsSnapshot.hasError) {
+          return _buildErrorState(context, 'Failed to load stops data.');
+        }
+        if (!stopsSnapshot.hasData) {
+          return _buildLoadingState(context);
+        }
 
-            const SizedBox(height: 32),
+        final stops = stopsSnapshot.data!;
 
-            // Main content: left fee configuration, right payment history
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final isStacked = constraints.maxWidth < 950;
+        return StreamBuilder<List<Map<String, dynamic>>>(
+          stream: studentsStream,
+          builder: (context, studentsSnapshot) {
+            if (studentsSnapshot.hasError) {
+              return _buildErrorState(context, 'Failed to load students data.');
+            }
+            if (!studentsSnapshot.hasData) {
+              return _buildLoadingState(context);
+            }
 
-                final left = SizedBox(
-                  width: isStacked
-                      ? double.infinity
-                      : constraints.maxWidth * 0.32,
-                  child: const _FeeConfigurationCard(),
-                );
+            final students = studentsSnapshot.data!;
 
-                final right = SizedBox(
-                  width: isStacked
-                      ? double.infinity
-                      : constraints.maxWidth * 0.64,
-                  child: const _PaymentHistoryCard(),
-                );
-
-                if (isStacked) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [left, const SizedBox(height: 24), right],
+            return StreamBuilder<List<Map<String, dynamic>>>(
+              stream: paymentsStream,
+              builder: (context, paymentsSnapshot) {
+                if (paymentsSnapshot.hasError) {
+                  return _buildErrorState(
+                    context,
+                    'Failed to load payments data.',
                   );
                 }
+                if (!paymentsSnapshot.hasData) {
+                  return _buildLoadingState(context);
+                }
 
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [left, const SizedBox(width: 24), right],
+                final payments = paymentsSnapshot.data!;
+                final metricsData = FeeMetricsService.compute(
+                  stops: stops,
+                  students: students,
+                  payments: payments,
+                );
+                final metrics = _FeeMetrics.fromSnapshot(metricsData);
+
+                final studentsById = <String, Map<String, dynamic>>{};
+                for (final student in students) {
+                  final id = student['id']?.toString();
+                  if (id != null && id.isNotEmpty) {
+                    studentsById[id] = student;
+                  }
+                }
+
+                return Container(
+                  color: bgColor(context),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(32.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Fees & Payments',
+                                    style: TextStyle(
+                                      fontSize: 30,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: -0.5,
+                                      color: onSurface(context),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Live sync with database: stop fees, pending dues, and payment records update automatically.',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: onSurfaceVariant(context),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Wrap(
+                              spacing: 12,
+                              runSpacing: 8,
+                              children: [
+                                OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                      vertical: 14,
+                                    ),
+                                    foregroundColor: _primaryColor,
+                                    side: BorderSide(
+                                      color: _primaryColor.withValues(
+                                        alpha: 0.4,
+                                      ),
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                  onPressed: () {},
+                                  icon: const Icon(
+                                    Icons.upload_file_outlined,
+                                    size: 20,
+                                  ),
+                                  label: const Text(
+                                    'Export Report',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                      vertical: 14,
+                                    ),
+                                    backgroundColor: _primaryColor,
+                                    foregroundColor: Colors.white,
+                                    elevation: 4,
+                                    shadowColor: _primaryColor.withValues(
+                                      alpha: 0.3,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                  onPressed: () {},
+                                  icon: const Icon(
+                                    Icons.notifications_active_outlined,
+                                    size: 20,
+                                  ),
+                                  label: const Text(
+                                    'Send Reminders',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 32),
+
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final isNarrow = constraints.maxWidth < 700;
+                            final cardWidth = isNarrow
+                                ? constraints.maxWidth
+                                : (constraints.maxWidth - 16) / 2;
+                            return Wrap(
+                              spacing: 16,
+                              runSpacing: 16,
+                              children: [
+                                SizedBox(
+                                  width: cardWidth,
+                                  child: _SummaryCard(
+                                    title: 'Total Collected',
+                                    value: _formatCurrency(
+                                      metrics.totalCollected,
+                                    ),
+                                    deltaText: metrics.collectionDeltaText,
+                                    deltaColor: metrics.collectionDeltaColor,
+                                    icon: Icons.account_balance_wallet_outlined,
+                                  ),
+                                ),
+                                SizedBox(
+                                  width: cardWidth,
+                                  child: _SummaryCard(
+                                    title: 'Pending Dues',
+                                    value: _formatCurrency(metrics.pendingDues),
+                                    deltaText:
+                                        '${metrics.unpaidStudents} unpaid students',
+                                    deltaColor: metrics.unpaidStudents == 0
+                                        ? const Color(0xFF15803D)
+                                        : const Color(0xFFC2410C),
+                                    icon: Icons.pending_actions_outlined,
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+
+                        const SizedBox(height: 32),
+
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final isStacked = constraints.maxWidth < 950;
+
+                            final left = SizedBox(
+                              width: isStacked
+                                  ? double.infinity
+                                  : constraints.maxWidth * 0.32,
+                              child: _FeeConfigurationCard(stops: stops),
+                            );
+
+                            final right = SizedBox(
+                              width: isStacked
+                                  ? double.infinity
+                                  : constraints.maxWidth * 0.64,
+                              child: _PaymentHistoryCard(
+                                payments: payments,
+                                studentsById: studentsById,
+                              ),
+                            );
+
+                            if (isStacked) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  left,
+                                  const SizedBox(height: 24),
+                                  right,
+                                ],
+                              );
+                            }
+
+                            return Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                left,
+                                const SizedBox(width: 24),
+                                right,
+                              ],
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
                 );
               },
-            ),
-          ],
-        ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildLoadingState(BuildContext context) {
+    return Center(
+      child: CircularProgressIndicator(
+        color: Theme.of(context).colorScheme.primary,
       ),
     );
   }
+
+  Widget _buildErrorState(BuildContext context, String message) {
+    return Center(
+      child: Text(message, style: TextStyle(color: onSurfaceVariant(context))),
+    );
+  }
 }
-// ---------------------------------------------------------------------------
+
+class _FeeMetrics {
+  final double totalCollected;
+  final double pendingDues;
+  final int unpaidStudents;
+  final String collectionDeltaText;
+  final Color collectionDeltaColor;
+
+  const _FeeMetrics({
+    required this.totalCollected,
+    required this.pendingDues,
+    required this.unpaidStudents,
+    required this.collectionDeltaText,
+    required this.collectionDeltaColor,
+  });
+
+  factory _FeeMetrics.fromSnapshot(FeeMetricsSnapshot snapshot) {
+    final deltaPrefix = snapshot.collectionDeltaPercent >= 0 ? '+' : '';
+    final deltaText =
+        '$deltaPrefix${snapshot.collectionDeltaPercent.toStringAsFixed(1)}%';
+    return _FeeMetrics(
+      totalCollected: snapshot.totalCollected,
+      pendingDues: snapshot.pendingAmount,
+      unpaidStudents: snapshot.unpaidStudents,
+      collectionDeltaText: deltaText,
+      collectionDeltaColor: snapshot.collectionDeltaPercent >= 0
+          ? const Color(0xFF15803D)
+          : const Color(0xFFC2410C),
+    );
+  }
+}
 
 class _SummaryCard extends StatelessWidget {
   final String title;
@@ -259,7 +399,7 @@ class _SummaryCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'vs. previous month',
+            'updates live from database',
             style: TextStyle(fontSize: 11, color: onSurfaceVariant(context)),
           ),
         ],
@@ -268,15 +408,127 @@ class _SummaryCard extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Fee Configuration Card (left panel)
-// ---------------------------------------------------------------------------
+class _FeeConfigurationCard extends StatefulWidget {
+  final List<Map<String, dynamic>> stops;
 
-class _FeeConfigurationCard extends StatelessWidget {
-  const _FeeConfigurationCard();
+  const _FeeConfigurationCard({required this.stops});
+
+  @override
+  State<_FeeConfigurationCard> createState() => _FeeConfigurationCardState();
+}
+
+class _FeeConfigurationCardState extends State<_FeeConfigurationCard> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<Map<String, dynamic>> get _filteredStops {
+    if (_searchQuery.isEmpty) {
+      return widget.stops;
+    }
+    final q = _searchQuery.toLowerCase();
+    return widget.stops.where((stop) {
+      final name = stop['stop_name']?.toString().toLowerCase() ?? '';
+      return name.contains(q);
+    }).toList();
+  }
+
+  Future<void> _showEditFeeDialog(Map<String, dynamic> stop) async {
+    final stopName = stop['stop_name']?.toString() ?? 'Unknown Stop';
+    final stopId = stop['id'];
+    if (stopId is! int) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invalid stop ID. Cannot update fee.')),
+      );
+      return;
+    }
+
+    final currentFee = _asDouble(stop['fee_amount']);
+    final controller = TextEditingController(
+      text: currentFee.truncateToDouble() == currentFee
+          ? currentFee.toStringAsFixed(0)
+          : currentFee.toStringAsFixed(2),
+    );
+    final formKey = GlobalKey<FormState>();
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Edit Fee - $stopName'),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            controller: controller,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              labelText: 'Monthly fee amount',
+              prefixText: '₹ ',
+            ),
+            validator: (value) {
+              final parsed = double.tryParse(value?.trim() ?? '');
+              if (parsed == null) {
+                return 'Enter a valid amount';
+              }
+              if (parsed < 0) {
+                return 'Amount cannot be negative';
+              }
+              return null;
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (!formKey.currentState!.validate()) {
+                return;
+              }
+
+              final newAmount = double.parse(controller.text.trim());
+              try {
+                await Supabase.instance.client
+                    .from('stops')
+                    .update({'fee_amount': newAmount})
+                    .eq('id', stopId);
+                if (!mounted) {
+                  return;
+                }
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Updated fee for $stopName to ₹${newAmount.toStringAsFixed(0)}',
+                    ),
+                  ),
+                );
+              } catch (e) {
+                if (!mounted) {
+                  return;
+                }
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Failed to update fee: $e')),
+                );
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final filteredStops = _filteredStops;
+
     return Container(
       decoration: BoxDecoration(
         color: surfaceColor(context),
@@ -295,25 +547,53 @@ class _FeeConfigurationCard extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Fee Configuration',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: onSurface(context),
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Fee Configuration',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: onSurface(context),
+                      ),
+                    ),
+                    Text(
+                      '${filteredStops.length} stops',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: onSurfaceVariant(context),
+                      ),
+                    ),
+                  ],
                 ),
-                TextButton(
-                  onPressed: () {},
-                  child: const Text(
-                    'Edit All',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: _primaryColor,
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _searchController,
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value.trim();
+                    });
+                  },
+                  decoration: InputDecoration(
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    prefixIcon: const Icon(Icons.search, size: 18),
+                    prefixIconColor: Colors.grey[500],
+                    hintText: 'Search stop by name...',
+                    hintStyle: const TextStyle(fontSize: 12),
+                    filled: true,
+                    fillColor: inputFillColor(context),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide.none,
                     ),
                   ),
                 ),
@@ -323,64 +603,57 @@ class _FeeConfigurationCard extends StatelessWidget {
           const Divider(height: 1),
           Padding(
             padding: const EdgeInsets.all(20.0),
-            child: Column(
-              children: [
-                _buildStopFeeItem(
-                  context,
-                  'Downtown Central',
-                  'Monthly transport fee',
-                  '\$120',
-                ),
-                const SizedBox(height: 16),
-                _buildStopFeeItem(
-                  context,
-                  'North Suburb',
-                  'Monthly transport fee',
-                  '\$100',
-                ),
-                const SizedBox(height: 16),
-                _buildStopFeeItem(
-                  context,
-                  'East Gate Terminus',
-                  'Monthly transport fee',
-                  '\$150',
-                ),
-                const SizedBox(height: 16),
-                _buildStopFeeItem(
-                  context,
-                  'West River Plaza',
-                  'Monthly transport fee',
-                  '\$130',
-                ),
-                const SizedBox(height: 20),
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(44),
-                    side: BorderSide(
-                      color: _primaryColor.withValues(alpha: 0.3),
-                      width: 1.4,
+            child: filteredStops.isEmpty
+                ? Center(
+                    child: Text(
+                      widget.stops.isEmpty
+                          ? 'No stops found in database'
+                          : 'No stops match your search',
+                      style: TextStyle(color: onSurfaceVariant(context)),
                     ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+                  )
+                : Column(
+                    children: [
+                      for (int i = 0; i < filteredStops.length; i++) ...[
+                        _buildStopFeeItem(
+                          context,
+                          filteredStops[i],
+                          'Monthly transport fee',
+                          _formatCurrency(
+                            _asDouble(filteredStops[i]['fee_amount']),
+                          ),
+                        ),
+                        if (i != filteredStops.length - 1)
+                          const SizedBox(height: 16),
+                      ],
+                      const SizedBox(height: 20),
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(44),
+                          side: BorderSide(
+                            color: _primaryColor.withValues(alpha: 0.3),
+                            width: 1.4,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        onPressed: null,
+                        icon: const Icon(
+                          Icons.add_location_alt_outlined,
+                          size: 18,
+                          color: _primaryColor,
+                        ),
+                        label: const Text(
+                          'Add New Stop Fee',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  onPressed: () {},
-                  icon: const Icon(
-                    Icons.add_location_alt_outlined,
-                    size: 18,
-                    color: _primaryColor,
-                  ),
-                  label: const Text(
-                    'Add New Stop Fee',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: _primaryColor,
-                    ),
-                  ),
-                ),
-              ],
-            ),
           ),
         ],
       ),
@@ -389,30 +662,37 @@ class _FeeConfigurationCard extends StatelessWidget {
 
   Widget _buildStopFeeItem(
     BuildContext context,
-    String stopName,
+    Map<String, dynamic> stop,
     String description,
     String amount,
   ) {
+    final stopName = stop['stop_name']?.toString() ?? 'Unknown Stop';
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              stopName,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: onSurface(context),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                stopName,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: onSurface(context),
+                ),
               ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              description,
-              style: TextStyle(fontSize: 11, color: onSurfaceVariant(context)),
-            ),
-          ],
+              const SizedBox(height: 2),
+              Text(
+                description,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: onSurfaceVariant(context),
+                ),
+              ),
+            ],
+          ),
         ),
         Row(
           children: [
@@ -425,7 +705,7 @@ class _FeeConfigurationCard extends StatelessWidget {
               ),
             ),
             IconButton(
-              onPressed: () {},
+              onPressed: () => _showEditFeeDialog(stop),
               icon: const Icon(
                 Icons.edit_outlined,
                 size: 18,
@@ -442,16 +722,41 @@ class _FeeConfigurationCard extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Payment History Card (right panel)
-// ---------------------------------------------------------------------------
+class _PaymentHistoryCard extends StatefulWidget {
+  final List<Map<String, dynamic>> payments;
+  final Map<String, Map<String, dynamic>> studentsById;
 
-class _PaymentHistoryCard extends StatelessWidget {
-  const _PaymentHistoryCard();
+  const _PaymentHistoryCard({
+    required this.payments,
+    required this.studentsById,
+  });
 
-  // Payment History Card build
+  @override
+  State<_PaymentHistoryCard> createState() => _PaymentHistoryCardState();
+}
+
+class _PaymentHistoryCardState extends State<_PaymentHistoryCard> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final rows = _buildRows();
+    final filteredRows = rows.where((row) {
+      if (_searchQuery.isEmpty) {
+        return true;
+      }
+      final q = _searchQuery.toLowerCase();
+      return row.studentName.toLowerCase().contains(q) ||
+          row.course.toLowerCase().contains(q);
+    }).toList();
+
     return Container(
       decoration: BoxDecoration(
         color: surfaceColor(context),
@@ -468,7 +773,6 @@ class _PaymentHistoryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Header
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
             child: Row(
@@ -487,6 +791,12 @@ class _PaymentHistoryCard extends StatelessWidget {
                     SizedBox(
                       width: 220,
                       child: TextField(
+                        controller: _searchController,
+                        onChanged: (value) {
+                          setState(() {
+                            _searchQuery = value.trim();
+                          });
+                        },
                         decoration: InputDecoration(
                           isDense: true,
                           contentPadding: const EdgeInsets.symmetric(
@@ -526,9 +836,18 @@ class _PaymentHistoryCard extends StatelessWidget {
 
           const Divider(height: 1),
 
-          // Table
           LayoutBuilder(
             builder: (context, constraints) {
+              if (rows.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Text(
+                    'No payment records found in database.',
+                    style: TextStyle(color: onSurfaceVariant(context)),
+                  ),
+                );
+              }
+
               return SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: ConstrainedBox(
@@ -561,75 +880,11 @@ class _PaymentHistoryCard extends StatelessWidget {
                       DataColumn(
                         label: Text('STATUS', style: _headerStyle(context)),
                       ),
-                      DataColumn(label: SizedBox()),
+                      const DataColumn(label: SizedBox()),
                     ],
-                    rows: [
-                      _paymentRow(
-                        context,
-                        'RS',
-                        const Color(0xFFE5EDFF),
-                        const Color(0xFF1D4ED8),
-                        'Rahul Sharma',
-                        'BTech (CS)',
-                        '\$120',
-                        'Oct 12, 2023',
-                        'Paid',
-                        const Color(0xFF15803D),
-                        const Color(0xFFD1FAE5),
-                      ),
-                      _paymentRow(
-                        context,
-                        'AP',
-                        const Color(0xFFFFEDD5),
-                        const Color(0xFFEA580C),
-                        'Ananya Patel',
-                        'MCA',
-                        '\$100',
-                        'Oct 14, 2023',
-                        'Pending',
-                        const Color(0xFFC2410C),
-                        const Color(0xFFFFEDD5),
-                      ),
-                      _paymentRow(
-                        context,
-                        'VJ',
-                        const Color(0xFFDBEAFE),
-                        const Color(0xFF1D4ED8),
-                        'Vikram Jha',
-                        'BTech (ME)',
-                        '\$120',
-                        'Oct 15, 2023',
-                        'Paid',
-                        const Color(0xFF15803D),
-                        const Color(0xFFD1FAE5),
-                      ),
-                      _paymentRow(
-                        context,
-                        'SM',
-                        const Color(0xFFEDE9FE),
-                        const Color(0xFF6D28D9),
-                        'Sanya Malhotra',
-                        'MTech',
-                        '\$150',
-                        'Oct 18, 2023',
-                        'Pending',
-                        const Color(0xFFC2410C),
-                        const Color(0xFFFFEDD5),
-                      ),
-                      _paymentRow(
-                        context,
-                        'DS',
-                        const Color(0xFFCCFBF1),
-                        const Color(0xFF0F766E),
-                        'Deepak Singh',
-                        'BTech (CS)',
-                        '\$120',
-                        'Oct 20, 2023',
-                        'Paid',
-                        const Color(0xFF15803D),
-                        const Color(0xFFD1FAE5),
-                      ),
-                    ],
+                    rows: filteredRows
+                        .map((row) => _paymentRow(context, row))
+                        .toList(),
                   ),
                 ),
               );
@@ -638,14 +893,13 @@ class _PaymentHistoryCard extends StatelessWidget {
 
           const Divider(height: 1),
 
-          // Pagination footer
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Showing 5 of 248 records',
+                  'Showing ${filteredRows.length} of ${rows.length} records',
                   style: TextStyle(
                     fontSize: 11,
                     color: onSurfaceVariant(context),
@@ -654,7 +908,7 @@ class _PaymentHistoryCard extends StatelessWidget {
                 Row(
                   children: [
                     OutlinedButton(
-                      onPressed: () {},
+                      onPressed: null,
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 20,
@@ -671,7 +925,7 @@ class _PaymentHistoryCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     ElevatedButton(
-                      onPressed: () {},
+                      onPressed: null,
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 20,
@@ -698,6 +952,28 @@ class _PaymentHistoryCard extends StatelessWidget {
     );
   }
 
+  List<_PaymentRowModel> _buildRows() {
+    return widget.payments.map((payment) {
+      final studentId = payment['student_id']?.toString() ?? '';
+      final student = widget.studentsById[studentId];
+
+      final fullName = student?['full_name']?.toString() ?? 'Unknown Student';
+      final course = student?['course']?.toString() ?? 'N/A';
+      final amountPaid = _asDouble(payment['amount_paid']);
+      final status = payment['status'] == true;
+      final createdAt = _parseDate(payment['created_at']);
+
+      return _PaymentRowModel(
+        studentId: studentId,
+        studentName: fullName,
+        course: course,
+        amount: amountPaid,
+        date: createdAt,
+        isPaid: status,
+      );
+    }).toList();
+  }
+
   static TextStyle _headerStyle(BuildContext context) => TextStyle(
     fontSize: 11,
     fontWeight: FontWeight.w700,
@@ -705,19 +981,10 @@ class _PaymentHistoryCard extends StatelessWidget {
     color: isDark(context) ? const Color(0xFF94A3B8) : const Color(0xFF6B7280),
   );
 
-  static DataRow _paymentRow(
-    BuildContext context,
-    String initials,
-    Color initialsColor,
-    Color initialsTextColor,
-    String studentName,
-    String course,
-    String amount,
-    String date,
-    String status,
-    Color statusColor,
-    Color statusBackground,
-  ) {
+  DataRow _paymentRow(BuildContext context, _PaymentRowModel row) {
+    final avatarBg = _pickAvatarBg(row.studentId);
+    final avatarFg = _pickAvatarFg(row.studentId);
+
     return DataRow(
       cells: [
         DataCell(
@@ -726,19 +993,19 @@ class _PaymentHistoryCard extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 16,
-                backgroundColor: initialsColor,
+                backgroundColor: avatarBg,
                 child: Text(
-                  initials,
+                  _initials(row.studentName),
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
-                    color: initialsTextColor,
+                    color: avatarFg,
                   ),
                 ),
               ),
               const SizedBox(width: 8),
               Text(
-                studentName,
+                row.studentName,
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -756,7 +1023,7 @@ class _PaymentHistoryCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
-              course,
+              row.course,
               style: const TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
@@ -767,7 +1034,7 @@ class _PaymentHistoryCard extends StatelessWidget {
         ),
         DataCell(
           Text(
-            amount,
+            _formatCurrency(row.amount),
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.bold,
@@ -777,7 +1044,7 @@ class _PaymentHistoryCard extends StatelessWidget {
         ),
         DataCell(
           Text(
-            date,
+            _formatDate(row.date),
             style: TextStyle(
               fontSize: 11,
               color: onSurfaceVariant(context),
@@ -789,15 +1056,19 @@ class _PaymentHistoryCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: statusBackground,
+              color: row.isPaid
+                  ? const Color(0xFFD1FAE5)
+                  : const Color(0xFFFFEDD5),
               borderRadius: BorderRadius.circular(999),
             ),
             child: Text(
-              status.toUpperCase(),
+              row.isPaid ? 'PAID' : 'PENDING',
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w900,
-                color: statusColor,
+                color: row.isPaid
+                    ? const Color(0xFF15803D)
+                    : const Color(0xFFC2410C),
               ),
             ),
           ),
@@ -815,4 +1086,111 @@ class _PaymentHistoryCard extends StatelessWidget {
       ],
     );
   }
+
+  String _initials(String fullName) {
+    final parts = fullName
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((p) => p.isNotEmpty)
+        .toList();
+    if (parts.isEmpty) {
+      return 'NA';
+    }
+    if (parts.length == 1) {
+      final one = parts.first;
+      return one.length >= 2
+          ? one.substring(0, 2).toUpperCase()
+          : one.substring(0, 1).toUpperCase();
+    }
+    return (parts.first[0] + parts[1][0]).toUpperCase();
+  }
+
+  Color _pickAvatarBg(String key) {
+    const palette = [
+      Color(0xFFE5EDFF),
+      Color(0xFFFFEDD5),
+      Color(0xFFDBEAFE),
+      Color(0xFFEDE9FE),
+      Color(0xFFCCFBF1),
+    ];
+    if (key.isEmpty) {
+      return palette.first;
+    }
+    return palette[key.codeUnitAt(0) % palette.length];
+  }
+
+  Color _pickAvatarFg(String key) {
+    const palette = [
+      Color(0xFF1D4ED8),
+      Color(0xFFEA580C),
+      Color(0xFF1D4ED8),
+      Color(0xFF6D28D9),
+      Color(0xFF0F766E),
+    ];
+    if (key.isEmpty) {
+      return palette.first;
+    }
+    return palette[key.codeUnitAt(0) % palette.length];
+  }
+}
+
+class _PaymentRowModel {
+  final String studentId;
+  final String studentName;
+  final String course;
+  final double amount;
+  final DateTime? date;
+  final bool isPaid;
+
+  const _PaymentRowModel({
+    required this.studentId,
+    required this.studentName,
+    required this.course,
+    required this.amount,
+    required this.date,
+    required this.isPaid,
+  });
+}
+
+double _asDouble(dynamic value) {
+  if (value is num) {
+    return value.toDouble();
+  }
+  return double.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+DateTime? _parseDate(dynamic value) {
+  final raw = value?.toString();
+  if (raw == null || raw.isEmpty) {
+    return null;
+  }
+  return DateTime.tryParse(raw)?.toLocal();
+}
+
+String _formatDate(DateTime? date) {
+  if (date == null) {
+    return '--';
+  }
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  return '${months[date.month - 1]} ${date.day}, ${date.year}';
+}
+
+String _formatCurrency(double amount) {
+  final intAmount = amount.truncateToDouble() == amount;
+  return intAmount
+      ? '₹${amount.toStringAsFixed(0)}'
+      : '₹${amount.toStringAsFixed(2)}';
 }
