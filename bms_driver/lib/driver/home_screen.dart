@@ -42,7 +42,6 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
   final LatLng _stopLocation = const LatLng(9.5042, 76.5521);
 
   LatLng? _currentPosition;
-  bool _isLoadingLocation = true;
   Timer? _locationTimer;
 
   @override
@@ -137,7 +136,6 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
       _fitBounds();
     } catch (e) {
       debugPrint('Error getting location: $e');
-      setState(() => _isLoadingLocation = false);
     }
   }
 
