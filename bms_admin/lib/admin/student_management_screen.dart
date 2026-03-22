@@ -144,15 +144,6 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
             const Expanded(child: Center(child: CircularProgressIndicator()))
           else if (_errorMessage != null)
             Expanded(child: Center(child: Text(_errorMessage!)))
-          else if (_filteredStudents.isEmpty)
-            Expanded(
-              child: Center(
-                child: Text(
-                  'No students found',
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
-              ),
-            )
           else
             Expanded(
               child: Container(
@@ -206,15 +197,24 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                           ),
                           const Divider(height: 1),
                           Expanded(
-                            child: ListView.builder(
-                              itemCount: _filteredStudents.length,
-                              itemBuilder: (context, index) => Padding(
-                                padding: const EdgeInsets.all(8),
-                                child: _buildStudentCard(
-                                  _filteredStudents[index],
-                                ),
-                              ),
-                            ),
+                            child: _filteredStudents.isEmpty
+                                ? Center(
+                                    child: Text(
+                                      'No students found',
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.bodyLarge,
+                                    ),
+                                  )
+                                : ListView.builder(
+                                    itemCount: _filteredStudents.length,
+                                    itemBuilder: (context, index) => Padding(
+                                      padding: const EdgeInsets.all(8),
+                                      child: _buildStudentCard(
+                                        _filteredStudents[index],
+                                      ),
+                                    ),
+                                  ),
                           ),
                         ],
                       );
@@ -258,23 +258,17 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                             ),
                           ),
                         ),
-                        const Divider(height: 1),
-                        Container(
-                          color: inputFillColor(context),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 10,
-                          ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
                           child: Row(
                             children: [
                               Expanded(
                                 flex: 3,
                                 child: Text(
-                                  'NAME',
+                                  'Student',
                                   style: TextStyle(
-                                    fontSize: 11,
+                                    fontSize: 12,
                                     fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.8,
                                     color: onSurfaceVariant(context),
                                   ),
                                 ),
@@ -282,11 +276,10 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                               Expanded(
                                 flex: 3,
                                 child: Text(
-                                  'EMAIL',
+                                  'Email',
                                   style: TextStyle(
-                                    fontSize: 11,
+                                    fontSize: 12,
                                     fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.8,
                                     color: onSurfaceVariant(context),
                                   ),
                                 ),
@@ -294,11 +287,10 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                               Expanded(
                                 flex: 3,
                                 child: Text(
-                                  'COURSE',
+                                  'Course',
                                   style: TextStyle(
-                                    fontSize: 11,
+                                    fontSize: 12,
                                     fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.8,
                                     color: onSurfaceVariant(context),
                                   ),
                                 ),
@@ -306,198 +298,44 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                               Expanded(
                                 flex: 2,
                                 child: Text(
-                                  'SEMESTER',
+                                  'Semester',
                                   style: TextStyle(
-                                    fontSize: 11,
+                                    fontSize: 12,
                                     fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.8,
                                     color: onSurfaceVariant(context),
                                   ),
                                 ),
                               ),
-                              Expanded(
-                                child: Text(
-                                  'ACTIONS',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.8,
-                                    color: onSurfaceVariant(context),
-                                  ),
-                                ),
-                              ),
+                              const Expanded(child: SizedBox()),
                             ],
                           ),
                         ),
+                        const SizedBox(height: 8),
+                        const Divider(height: 1),
                         Expanded(
-                          child: ListView.separated(
-                            itemCount: _filteredStudents.length,
-                            separatorBuilder: (_, __) =>
-                                const Divider(height: 1),
-                            itemBuilder: (context, index) {
-                              final student = _filteredStudents[index];
-                              final sem = student.semester ?? 0;
-                              final semProgress = sem <= 0
-                                  ? 0.0
-                                  : (sem.clamp(1, 8) / 8);
-
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                  vertical: 11,
+                          child: _filteredStudents.isEmpty
+                              ? Center(
+                                  child: Text(
+                                    'No students found',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodyLarge,
+                                  ),
+                                )
+                              : ListView.separated(
+                                  itemCount: _filteredStudents.length,
+                                  separatorBuilder: (_, __) =>
+                                      const Divider(height: 1),
+                                  itemBuilder: (context, index) => Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                      vertical: 11,
+                                    ),
+                                    child: _buildDesktopStudentRow(
+                                      _filteredStudents[index],
+                                    ),
+                                  ),
                                 ),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      flex: 3,
-                                      child: Row(
-                                        children: [
-                                          CircleAvatar(
-                                            radius: 16,
-                                            backgroundColor: Theme.of(context)
-                                                .primaryColor
-                                                .withValues(alpha: 0.1),
-                                            child: Text(
-                                              _initials(student.fullName),
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w700,
-                                                color: Theme.of(
-                                                  context,
-                                                ).primaryColor,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 10),
-                                          Expanded(
-                                            child: Text(
-                                              student.fullName,
-                                              style: TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w600,
-                                                color: onSurface(context),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Expanded(
-                                      flex: 3,
-                                      child: Text(
-                                        student.email,
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          color: onSurfaceVariant(context),
-                                        ),
-                                      ),
-                                    ),
-                                    Expanded(
-                                      flex: 3,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 7,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: _courseChipColor(
-                                            context,
-                                            student.course,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            6,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          student.course?.isNotEmpty == true
-                                              ? student.course!
-                                              : 'N/A',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: onSurface(context),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    Expanded(
-                                      flex: 2,
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Semester ${student.semester ?? 'N/A'}',
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w600,
-                                              color: onSurface(context),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 6),
-                                          Container(
-                                            height: 3,
-                                            width: 80,
-                                            decoration: BoxDecoration(
-                                              color: inputFillColor(context),
-                                              borderRadius:
-                                                  BorderRadius.circular(99),
-                                            ),
-                                            child: FractionallySizedBox(
-                                              alignment: Alignment.centerLeft,
-                                              widthFactor: semProgress,
-                                              child: Container(
-                                                decoration: BoxDecoration(
-                                                  color: Theme.of(
-                                                    context,
-                                                  ).primaryColor,
-                                                  borderRadius:
-                                                      BorderRadius.circular(99),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          IconButton(
-                                            icon: Icon(
-                                              Icons.edit,
-                                              size: 18,
-                                              color: onSurfaceVariant(context),
-                                            ),
-                                            onPressed: () =>
-                                                _showEditStudentDialog(student),
-                                            tooltip: 'Edit',
-                                          ),
-                                          IconButton(
-                                            icon: Icon(
-                                              Icons.delete,
-                                              size: 18,
-                                              color: Theme.of(
-                                                context,
-                                              ).colorScheme.error,
-                                            ),
-                                            onPressed: () =>
-                                                _showDeleteConfirmation(
-                                                  student,
-                                                ),
-                                            tooltip: 'Delete',
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
                         ),
                       ],
                     );
@@ -507,6 +345,127 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
             ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDesktopStudentRow(Student student) {
+    final sem = student.semester ?? 0;
+    final semProgress = sem <= 0 ? 0.0 : (sem.clamp(1, 8) / 8);
+
+    return Row(
+      children: [
+        Expanded(
+          flex: 3,
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: Theme.of(
+                  context,
+                ).primaryColor.withValues(alpha: 0.1),
+                child: Text(
+                  _initials(student.fullName),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: Theme.of(context).primaryColor,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  student.fullName,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: onSurface(context),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          flex: 3,
+          child: Text(
+            student.email,
+            style: TextStyle(fontSize: 13, color: onSurfaceVariant(context)),
+          ),
+        ),
+        Expanded(
+          flex: 3,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            decoration: BoxDecoration(
+              color: _courseChipColor(context, student.course),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              student.course?.isNotEmpty == true ? student.course! : 'N/A',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: onSurface(context),
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ),
+        Expanded(
+          flex: 2,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                sem > 0 ? 'S$sem' : 'N/A',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: onSurface(context),
+                ),
+              ),
+              const SizedBox(height: 6),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  minHeight: 5,
+                  value: semProgress,
+                  backgroundColor: inputFillColor(context),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    Theme.of(context).primaryColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                icon: Icon(
+                  Icons.edit_outlined,
+                  size: 18,
+                  color: onSurfaceVariant(context),
+                ),
+                tooltip: 'Edit student',
+                onPressed: () => _showEditStudentDialog(student),
+              ),
+              IconButton(
+                icon: const Icon(
+                  Icons.delete_outline,
+                  size: 18,
+                  color: Color(0xFFEF4444),
+                ),
+                tooltip: 'Delete student',
+                onPressed: () => _showDeleteConfirmation(student),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
