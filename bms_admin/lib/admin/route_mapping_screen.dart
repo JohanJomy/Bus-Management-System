@@ -17,6 +17,8 @@ class RouteMappingScreen extends StatefulWidget {
 }
 
 class _RouteMappingScreenState extends State<RouteMappingScreen> {
+  static const int _rootStopId = 235;
+
   final BusService _busService = BusService();
   final MapController _mapController = MapController();
   final TextEditingController _searchController = TextEditingController();
@@ -257,7 +259,6 @@ class _RouteMappingScreenState extends State<RouteMappingScreen> {
       _selectedStopId = stop.id;
       _searchMarker = null;
     });
-    _mapController.move(LatLng(stop.latitude!, stop.longitude!), 16);
   }
 
   int? _toInt(dynamic value) {
@@ -446,6 +447,7 @@ class _RouteMappingScreenState extends State<RouteMappingScreen> {
                             final isSelected = stop.id == _selectedStopId;
                             final isPendingEdgeStart =
                                 stop.id == _pendingEdgeFromStopId;
+                            final isRootStop = stop.id == _rootStopId;
                             double zoomLevel = 13.0;
                             try {
                               zoomLevel = _mapController.camera.zoom;
@@ -466,12 +468,16 @@ class _RouteMappingScreenState extends State<RouteMappingScreen> {
                                         ? Colors.orange
                                         : (isSelected
                                             ? Colors.blue
-                                            : Colors.black),
+                                            : (isRootStop
+                                                ? Colors.deepPurple
+                                                : Colors.black)),
                                     shape: BoxShape.circle,
                                     border: Border.all(
                                       color: (isSelected || isPendingEdgeStart)
                                           ? Colors.white
-                                          : Colors.black,
+                                          : (isRootStop
+                                              ? Colors.deepPurpleAccent
+                                              : Colors.black),
                                       width: 2,
                                     ),
                                     boxShadow: [
