@@ -8,6 +8,8 @@
             "program": "bms_student/lib/main.dart",
             "cwd": "bms_student",
             "args": [
+                "--web-renderer",
+                "html",
                 "--web-port",
                 "6969"
             ]
@@ -19,6 +21,8 @@
             "program": "bms_admin/lib/main.dart",
              "cwd": "bms_admin",
             "args": [
+                "--web-renderer",
+                "html",
                 "--web-port",
                 "5001"
             ]
@@ -30,6 +34,8 @@
             "program": "bms_driver/lib/main.dart",
              "cwd": "bms_driver",
             "args": [
+                "--web-renderer",
+                "html",
                 "--web-port",
                 "5002"
             ]

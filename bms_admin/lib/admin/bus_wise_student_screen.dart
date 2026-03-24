@@ -16,12 +16,15 @@ class BusWiseStudentListScreen extends StatefulWidget {
 }
 
 class _BusWiseStudentListScreenState extends State<BusWiseStudentListScreen> {
+  static const int _studentsPageSize = 10;
+
   final BusService _busService = BusService();
   final StudentService _studentService = StudentService();
 
   List<Bus> _buses = [];
   Map<int, List<Map<String, dynamic>>> _busStudents = {};
   int? _selectedBusId;
+  int _visibleStudentsCount = _studentsPageSize;
   bool _isLoading = true;
   String? _errorMessage;
 
@@ -38,15 +41,24 @@ class _BusWiseStudentListScreenState extends State<BusWiseStudentListScreen> {
     });
     try {
       final buses = await _busService.getAllBuses();
+      final preloadedBusStudents = <int, List<Map<String, dynamic>>>{};
+
+      for (final bus in buses) {
+        try {
+          final manifests = await _busService.getStudentsWithPaymentByBus(bus.id);
+          preloadedBusStudents[bus.id] = _normalizeBusStudents(manifests);
+        } catch (_) {
+          preloadedBusStudents[bus.id] = <Map<String, dynamic>>[];
+        }
+      }
+
       setState(() {
         _buses = buses;
+        _busStudents = preloadedBusStudents;
         if (_selectedBusId == null && buses.isNotEmpty) {
           _selectedBusId = buses.first.id;
         }
       });
-      if (_selectedBusId != null) {
-        await _loadBusStudents(_selectedBusId!);
-      }
     } catch (e) {
       setState(() => _errorMessage = 'Failed to load buses: $e');
     } finally {
@@ -56,27 +68,73 @@ class _BusWiseStudentListScreenState extends State<BusWiseStudentListScreen> {
 
   Future<void> _loadBusStudents(int busId) async {
     try {
-      final students = await _busService.getStudentsWithPaymentByBus(busId);
+      final manifests = await _busService.getStudentsWithPaymentByBus(busId);
+      final students = _normalizeBusStudents(manifests);
       setState(() => _busStudents[busId] = students);
     } catch (e) {
       _showError('Error loading students: $e');
     }
   }
 
+  List<Map<String, dynamic>> _normalizeBusStudents(
+    List<Map<String, dynamic>> rows,
+  ) {
+    final byStudentId = <String, Map<String, dynamic>>{};
+
+    for (final row in rows) {
+      final student = _extractStudentRow(row);
+      if (student == null) {
+        continue;
+      }
+
+      final studentId = student['id']?.toString();
+      if (studentId == null || studentId.isEmpty) {
+        continue;
+      }
+
+      final manifestDate = row['manifest_date']?.toString() ?? '';
+      final existing = byStudentId[studentId];
+      final existingDate = existing?['_manifest_date']?.toString() ?? '';
+
+      if (existing == null || manifestDate.compareTo(existingDate) >= 0) {
+        final merged = Map<String, dynamic>.from(student);
+        merged['_manifest_date'] = manifestDate;
+        merged['allocated_bus_id'] = row['allocated_bus_id'];
+        byStudentId[studentId] = merged;
+      }
+    }
+
+    final normalized = byStudentId.values.toList();
+    normalized.sort((a, b) {
+      final aName = (a['full_name'] ?? '').toString().toLowerCase();
+      final bName = (b['full_name'] ?? '').toString().toLowerCase();
+      return aName.compareTo(bName);
+    });
+    return normalized;
+  }
+
+  Map<String, dynamic>? _extractStudentRow(Map<String, dynamic> row) {
+    if (row.containsKey('full_name')) {
+      return Map<String, dynamic>.from(row);
+    }
+
+    final nested = row['students'];
+    if (nested is Map<String, dynamic>) {
+      return Map<String, dynamic>.from(nested);
+    }
+    if (nested is Map) {
+      return nested.map(
+        (key, value) => MapEntry(key.toString(), value),
+      );
+    }
+
+    return null;
+  }
+
   void _showError(String message) {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
-  }
-
-  String _routeLabel(int index) {
-    const labels = ['PRIMARY ROUTE', 'EXPRESS ROUTE', 'SHUTTLE SERVICE'];
-    return labels[index % labels.length];
-  }
-
-  String _studentTag(String id) {
-    final token = id.length >= 4 ? id.substring(0, 4).toUpperCase() : id;
-    return 'STU-$token';
   }
 
   String _locationText(Map<String, dynamic> student) {
@@ -431,6 +489,10 @@ class _BusWiseStudentListScreenState extends State<BusWiseStudentListScreen> {
               itemBuilder: (context, index) {
                 final bus = _buses[index];
                 final studentCount = _busStudents[bus.id]?.length ?? 0;
+                final availableSeats = (bus.totalCapacity - studentCount).clamp(
+                  0,
+                  bus.totalCapacity,
+                );
                 final isSelected = _selectedBusId == bus.id;
 
                 return Padding(
@@ -438,7 +500,10 @@ class _BusWiseStudentListScreenState extends State<BusWiseStudentListScreen> {
                   child: InkWell(
                     borderRadius: BorderRadius.circular(10),
                     onTap: () {
-                      setState(() => _selectedBusId = bus.id);
+                      setState(() {
+                        _selectedBusId = bus.id;
+                        _visibleStudentsCount = _studentsPageSize;
+                      });
                       _loadBusStudents(bus.id);
                     },
                     child: Container(
@@ -460,16 +525,6 @@ class _BusWiseStudentListScreenState extends State<BusWiseStudentListScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _routeLabel(index),
-                            style: TextStyle(
-                              color: onSurfaceVariant(context),
-                              fontSize: 10,
-                              letterSpacing: 0.8,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
                             'Bus #${bus.busNumber}',
                             style: TextStyle(
                               fontWeight: FontWeight.w800,
@@ -482,7 +537,7 @@ class _BusWiseStudentListScreenState extends State<BusWiseStudentListScreen> {
                           Row(
                             children: [
                               Text(
-                                'CAPACITY\n$studentCount/${bus.totalCapacity}',
+                                'CAPACITY\n${bus.totalCapacity}',
                                 style: TextStyle(
                                   color: onSurfaceVariant(context),
                                   fontSize: 12,
@@ -491,7 +546,16 @@ class _BusWiseStudentListScreenState extends State<BusWiseStudentListScreen> {
                               ),
                               const SizedBox(width: 20),
                               Text(
-                                'ZONE\nCampus',
+                                'FILLED\n$studentCount',
+                                style: TextStyle(
+                                  color: onSurfaceVariant(context),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(width: 20),
+                              Text(
+                                'AVAILABLE\n$availableSeats',
                                 style: TextStyle(
                                   color: onSurfaceVariant(context),
                                   fontSize: 12,
@@ -540,6 +604,8 @@ class _BusWiseStudentListScreenState extends State<BusWiseStudentListScreen> {
 
   Widget _buildStudentList(bool dark) {
     final students = _busStudents[_selectedBusId] ?? [];
+    final visibleStudents = students.take(_visibleStudentsCount).toList();
+    final hasMoreStudents = visibleStudents.length < students.length;
     final selectedBus = _buses.firstWhere(
       (b) => b.id == _selectedBusId,
       orElse: () => _buses.first,
@@ -576,7 +642,7 @@ class _BusWiseStudentListScreenState extends State<BusWiseStudentListScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Showing ${students.length} confirmed passengers.',
+                        'Showing ${visibleStudents.length}/${students.length} confirmed passengers.',
                         style: TextStyle(color: onSurfaceVariant(context)),
                       ),
                     ],
@@ -603,17 +669,6 @@ class _BusWiseStudentListScreenState extends State<BusWiseStudentListScreen> {
                   flex: 3,
                   child: Text(
                     'STUDENT\nNAME',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: onSurfaceVariant(context),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'ID\nNUMBER',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
@@ -666,14 +721,13 @@ class _BusWiseStudentListScreenState extends State<BusWiseStudentListScreen> {
                     ),
                   )
                 : ListView.separated(
-                    itemCount: students.length,
+                    itemCount: visibleStudents.length,
                     separatorBuilder: (_, __) =>
                         Divider(height: 1, color: border),
                     itemBuilder: (context, index) {
-                      final student = students[index];
+                      final student = visibleStudents[index];
                       final fullName = (student['full_name'] ?? 'N/A')
                           .toString();
-                      final studentId = (student['id'] ?? '').toString();
 
                       return Padding(
                         padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
@@ -709,26 +763,6 @@ class _BusWiseStudentListScreenState extends State<BusWiseStudentListScreen> {
                                     ),
                                   ),
                                 ],
-                              ),
-                            ),
-                            Expanded(
-                              flex: 2,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: inputFillColor(context),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  _studentTag(studentId),
-                                  style: TextStyle(
-                                    color: onSurfaceVariant(context),
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
                               ),
                             ),
                             Expanded(
@@ -768,9 +802,12 @@ class _BusWiseStudentListScreenState extends State<BusWiseStudentListScreen> {
                             ),
                             Expanded(
                               child: Center(
-                                child: Icon(
-                                  Icons.more_vert,
-                                  color: onSurfaceVariant(context),
+                                child: IconButton(
+                                  onPressed: () => _showEditDialog(student),
+                                  icon: Icon(
+                                    Icons.more_vert,
+                                    color: onSurfaceVariant(context),
+                                  ),
                                 ),
                               ),
                             ),
@@ -786,20 +823,23 @@ class _BusWiseStudentListScreenState extends State<BusWiseStudentListScreen> {
             child: Row(
               children: [
                 Text(
-                  'Showing ${students.length} students',
+                  'Showing ${visibleStudents.length}/${students.length} students',
                   style: TextStyle(
                     color: onSurfaceVariant(context),
                     fontSize: 12,
                   ),
                 ),
                 const Spacer(),
-                OutlinedButton(onPressed: null, child: const Text('Previous')),
-                const SizedBox(width: 8),
-                OutlinedButton(onPressed: null, child: const Text('1')),
-                const SizedBox(width: 8),
-                OutlinedButton(onPressed: null, child: const Text('2')),
-                const SizedBox(width: 8),
-                OutlinedButton(onPressed: null, child: const Text('Next')),
+                if (hasMoreStudents)
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _visibleStudentsCount += _studentsPageSize;
+                      });
+                    },
+                    icon: const Icon(Icons.expand_more, size: 18),
+                    label: const Text('Show More'),
+                  ),
               ],
             ),
           ),
