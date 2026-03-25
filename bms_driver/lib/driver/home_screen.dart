@@ -5,6 +5,9 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'settings_screen.dart';
 
 class BusLocation {
   final double lat;
@@ -37,6 +40,9 @@ class DriverHomeScreen extends StatefulWidget {
 class _DriverHomeScreenState extends State<DriverHomeScreen> {
   bool isTripActive = false;
   final MapController _mapController = MapController();
+  String _busNumber = 'Unknown';
+  int _totalCapacity = 0;
+  int? _busId;
 
   // Saintgits College of Engineering (Approximate)
   final LatLng _stopLocation = const LatLng(9.5042, 76.5521);
@@ -48,6 +54,39 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
   void initState() {
     super.initState();
     _determinePosition();
+    _fetchBusDetails();
+  }
+
+  Future<void> _fetchBusDetails() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final busId = prefs.getInt('bus_id');
+      final busNum = prefs.getString('bus_number');
+      
+      if (mounted) {
+        setState(() {
+           _busNumber = busNum ?? 'Unknown';
+           _busId = busId;
+        });
+      }
+
+      if (busId == null) return;
+
+      final supabase = Supabase.instance.client;
+      final response = await supabase
+          .from('buses')
+          .select('total_capacity')
+          .eq('id', busId)
+          .maybeSingle();
+
+      if (response != null && mounted) {
+        setState(() {
+          _totalCapacity = response['total_capacity'] as int? ?? 0;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching bus details: $e');
+    }
   }
 
   @override
@@ -71,9 +110,14 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
       status: status,
     );
 
-    final ref = FirebaseDatabase.instance.ref('buses/13/location');
+    if (_busId == null) {
+      debugPrint('No bus ID available to send location');
+      return;
+    }
+
+    final ref = FirebaseDatabase.instance.ref('buses/$_busId/location');
     await ref.set(busLocation.toJson());
-    debugPrint('Firebase write success: buses/13/location');
+    debugPrint('Firebase write success: buses/$_busId/location');
 
     if (mounted && showSnackBar && status != 'active') {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -114,9 +158,15 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
 
     if (permission == LocationPermission.deniedForever) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text(
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: const Text(
             'Location permissions are permanently denied, we cannot request permissions.',
+          ),
+          action: SnackBarAction(
+            label: 'Open Settings',
+            onPressed: () {
+              Geolocator.openAppSettings();
+            },
           ),
         ));
       }
@@ -239,11 +289,22 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildCircleButton(Icons.person, isDark),
+                  _buildCircleButton(
+                    Icons.settings,
+                    isDark,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const DriverSettingsScreen(),
+                        ),
+                      );
+                    },
+                  ),
                   Column(
                     children: [
                       Text(
-                        'ROUTE 42-B',
+                        'ROUTE $_busNumber',
                         style: TextStyle(
                           color: textSec,
                           fontSize: 10,
@@ -261,7 +322,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                       ),
                     ],
                   ),
-                  _buildCircleButton(Icons.notifications, isDark),
+                  Container(width: 40), // Placeholder to balance
                 ],
               ),
             ),
@@ -307,10 +368,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      'Broadcasting live to 48 students',
-                      style: TextStyle(color: textSec, fontSize: 14),
-                    ),
+                    
 
                     const SizedBox(height: 32),
 
@@ -363,33 +421,18 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
 
                     const SizedBox(height: 40),
 
-                    // Stats Grid
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildStatCard(
-                            isDark,
-                            cardColor,
-                            Icons.group,
-                            'TOTAL STUDENTS',
-                            '48',
-                            textSec,
-                            textPrim,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildStatCard(
-                            isDark,
-                            cardColor,
-                            Icons.payments,
-                            'PENDING FEES',
-                            '2',
-                            Colors.orange,
-                            textPrim,
-                          ),
-                        ),
-                      ],
+                    // Stats Grid - Total Capacity
+                    SizedBox(
+                      width: double.infinity,
+                      child: _buildStatCard(
+                        isDark,
+                        cardColor,
+                        Icons.airline_seat_recline_extra,
+                        'TOTAL CAPACITY',
+                        _totalCapacity.toString(),
+                        Colors.blue, // Using a distinct color like blue for capacity
+                        textPrim,
+                      ),
                     ),
 
                     const SizedBox(height: 40),
@@ -403,15 +446,18 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
     );
   }
 
-  Widget _buildCircleButton(IconData icon, bool isDark) {
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
-        shape: BoxShape.circle,
+  Widget _buildCircleButton(IconData icon, bool isDark, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, size: 20, color: isDark ? Colors.white : Colors.black87),
       ),
-      child: Icon(icon, size: 20, color: isDark ? Colors.white : Colors.black87),
     );
   }
 
@@ -536,62 +582,6 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
               ],
             ),
           ),
-
-          // Top Info Card
-          Positioned(
-            top: 16,
-            left: 16,
-            right: 16,
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: (isDark ? const Color(0xFF0F172A) : Colors.white).withOpacity(0.9),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withOpacity(0.2)),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(Icons.location_on, color: primary, size: 28),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'UPCOMING',
-                          style: TextStyle(
-                            color: primary,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          'Saintgits College',
-                          style: TextStyle(
-                            color: textPrim,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          '10 km • 25 mins',
-                          style: TextStyle(color: textSec, fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -625,42 +615,54 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
     Color textColor,
   ) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isDark ? Colors.white10 : (Colors.grey[200] ?? Colors.grey),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, size: 18, color: iconColor),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    color: iconColor,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  overflow: TextOverflow.ellipsis,
+              Text(
+                label,
+                style: TextStyle(
+                  color: isDark ? Colors.grey[400] : Colors.grey[500],
+                  fontSize: 12, // Increased slightly
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                value,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 32, // Larger for emphasis
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              color: textColor,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
             ),
+            child: Icon(icon, color: iconColor, size: 32),
           ),
         ],
       ),

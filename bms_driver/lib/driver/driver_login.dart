@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class DriverLoginScreen extends StatefulWidget {
   const DriverLoginScreen({super.key});
@@ -9,18 +11,81 @@ class DriverLoginScreen extends StatefulWidget {
 
 class _DriverLoginScreenState extends State<DriverLoginScreen> {
   final _busNumberController = TextEditingController();
-  final _passwordController = TextEditingController();
-  bool _isPasswordVisible = false;
+  bool _isLoading = false;
 
-  void _handleLogin() {
-    // Navigate to driver dashboard
-    Navigator.pushReplacementNamed(context, '/driver');
+  @override
+  void initState() {
+    super.initState();
+    _checkLoginStatus();
+  }
+
+  Future<void> _checkLoginStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.containsKey('bus_id') && mounted) {
+      Navigator.pushReplacementNamed(context, '/driver');
+    }
+  }
+
+  Future<void> _handleLogin() async {
+    final busNumber = _busNumberController.text.trim();
+    if (busNumber.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a bus number')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Check if bus exists in Supabase
+      final data = await Supabase.instance.client
+          .from('buses')
+          .select('id, bus_number')
+          .eq('bus_number', busNumber) // Assuming bus_number is stored as integer or text matching input
+          // If bus_number is int in DB but string here, we should try parsing it
+          .maybeSingle();
+
+      if (data != null) {
+        // Bus found
+        final busId = data['id'];
+        final busNum = data['bus_number'];
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setInt('bus_id', busId);
+        await prefs.setString('bus_number', busNum.toString());
+
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, '/driver');
+        }
+      } else {
+        // Bus not found
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Bus number not found')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
   void dispose() {
     _busNumberController.dispose();
-    _passwordController.dispose();
     super.dispose();
   }
 
@@ -68,7 +133,7 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
                     width: 80,
                     height: 80,
                     decoration: BoxDecoration(
-                      color: primaryColor.withOpacity(0.1),
+                      color: primaryColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Icon(
@@ -151,66 +216,6 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
                         ),
                       ),
 
-                      const SizedBox(height: 16),
-
-                      // Password Input
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                        child: Text(
-                          "Password",
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            fontFamily: 'Inter',
-                            color: textColor,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: cardColor,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: borderColor),
-                        ),
-                        child: Row(
-                          children: [
-                            const SizedBox(width: 16),
-                            Icon(Icons.lock_outline, color: iconColor, size: 22),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: TextField(
-                                controller: _passwordController,
-                                obscureText: !_isPasswordVisible,
-                                style: TextStyle(color: textColor, fontWeight: FontWeight.w500),
-                                decoration: InputDecoration(
-                                  border: InputBorder.none,
-                                  hintText: "••••••••",
-                                  hintStyle: TextStyle(color: placeholderColor),
-                                  isDense: true,
-                                ),
-                              ),
-                            ),
-                            IconButton(
-                              icon: Icon(
-                                _isPasswordVisible
-                                    ? Icons.visibility_outlined
-                                    : Icons.visibility_off_outlined,
-                                color: iconColor,
-                                size: 22,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _isPasswordVisible = !_isPasswordVisible;
-                                });
-                              },
-                            ),
-                            const SizedBox(width: 4),
-                          ],
-                        ),
-                      ),
-
                       const SizedBox(height: 24),
 
                       // Login Button
@@ -218,17 +223,33 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
                         width: double.infinity,
                         height: 56,
                         child: ElevatedButton(
-                          onPressed: _handleLogin,
+                          onPressed: _isLoading ? null : () {
+                            if (_busNumberController.text.isNotEmpty) {
+                              // Wrap in try-catch to fetch asynchronously inside button press
+                              // or call our async method
+                              _handleLogin();
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Please enter a bus number')),
+                              );
+                            }
+                          },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: primaryColor,
                             foregroundColor: Colors.white,
                             elevation: 4,
-                            shadowColor: primaryColor.withOpacity(0.4),
+                            shadowColor: primaryColor.withValues(alpha: 0.4),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: const Text(
+                          child: _isLoading 
+                            ? const SizedBox(
+                                width: 20, 
+                                height: 20, 
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                              )
+                            : const Text(
                             "Start Shift",
                             style: TextStyle(
                               fontSize: 16,

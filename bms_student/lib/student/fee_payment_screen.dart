@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:razorpay_web/razorpay_web.dart';
 import 'package:bms_student/student/screens/payment_receipt_screen.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class FeePaymentScreen extends StatefulWidget {
   const FeePaymentScreen({super.key});
@@ -12,19 +14,114 @@ class FeePaymentScreen extends StatefulWidget {
 
 class _FeePaymentScreenState extends State<FeePaymentScreen> {
   late Razorpay _razorpay;
-  double _amountDue = 4500.00;
-  final List<Map<String, String>> _paymentHistory = [
-    {'title': 'Quarter 2 Fees', 'date': 'Jul 12, 2023', 'amount': '₹4500.00'},
-    {'title': 'Quarter 1 Fees', 'date': 'Apr 05, 2023', 'amount': '₹4500.00'},
-  ];
+  double _amountDue = 0.00;
+  List<Map<String, dynamic>> _paymentHistory = [];
+  bool _isLoading = true;
+  String? _studentId;
+  int? _semester;
+  String? _studentName;
+  String? _studentEmail;
 
   @override
   void initState() {
     super.initState();
+    _fetchData();
     _razorpay = Razorpay();
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
     _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
+  }
+
+  Future<void> _fetchData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _studentId = prefs.getString('student_id');
+      _studentName = prefs.getString('full_name');
+      _studentEmail = prefs.getString('email');
+
+      if (_studentId == null) {
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      final supabase = Supabase.instance.client;
+
+      // 1. Fetch Student Details (semester & boarding_stop_id)
+      final studentData = await supabase
+          .from('students')
+          .select('semester, boarding_stop_id')
+          .eq('id', _studentId!)
+          .maybeSingle();
+
+      if (studentData != null) {
+        _semester = studentData['semester'] as int?;
+        final boardingStopId = studentData['boarding_stop_id'] as int?;
+
+        // 2. Fetch Fee Amount if boarding stop exists
+        if (boardingStopId != null) {
+          final stopData = await supabase
+              .from('stops')
+              .select('fee_amount')
+              .eq('id', boardingStopId)
+              .maybeSingle();
+          
+          if (stopData != null) {
+            final fee = stopData['fee_amount'];
+            if (fee is num) {
+              _amountDue = fee.toDouble();
+            }
+          }
+        }
+      }
+
+      // 3. Fetch Payment History
+      final payments = await supabase
+          .from('payments')
+          .select('amount_paid, created_at, semester, gateway_payment_id')
+          .eq('student_id', _studentId!)
+          .order('created_at', ascending: false);
+
+      final List<Map<String, dynamic>> history = [];
+      if (payments != null) {
+          double totalPaid = 0.0;
+          for (final payment in (payments as List)) {
+            final amount = (payment['amount_paid'] as num?)?.toDouble() ?? 0.0;
+            final dateStr = payment['created_at'] as String;
+            final date = DateTime.parse(dateStr);
+            final formattedDate = DateFormat('MMM dd, yyyy').format(date);
+            final sem = payment['semester']?.toString() ?? 'N/A';
+            final payId = payment['gateway_payment_id']?.toString() ?? 'N/A';
+            
+            totalPaid += amount;
+
+            history.add({
+              'title': 'Semester $sem Fees',
+              'date': formattedDate,
+              'amount': '₹${amount.toStringAsFixed(2)}',
+              'paymentId': payId,
+            });
+          }
+          
+          // If already paid full amount, set due to 0
+          if (totalPaid >= _amountDue && _amountDue > 0) {
+             _amountDue = 0.0;
+          } else if (_amountDue > 0) {
+             _amountDue -= totalPaid;
+             if (_amountDue < 0) _amountDue = 0;
+          }
+      }
+      
+      if (mounted) {
+        setState(() {
+          _paymentHistory = history;
+          _isLoading = false;
+        });
+      }
+
+    } catch (e) {
+      debugPrint('Error fetching data: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -33,16 +130,43 @@ class _FeePaymentScreenState extends State<FeePaymentScreen> {
     super.dispose();
   }
 
-  void _handlePaymentSuccess(PaymentSuccessResponse response) {
+  Future<void> _handlePaymentSuccess(PaymentSuccessResponse response) async {
     if (_amountDue <= 0.0) return;
 
     final paymentId = response.paymentId ?? 'N/A';
-    final date = DateFormat('MMM dd, yyyy').format(DateTime.now());
+    final now = DateTime.now();
+    final date = DateFormat('MMM dd, yyyy').format(now);
+    final amountPaid = _amountDue; // Assuming full payment of remaining due
     
+    // Insert into Supabase
+    try {
+      if (_studentId != null) {
+        await Supabase.instance.client.from('payments').insert({
+          'student_id': _studentId,
+          'amount_paid': amountPaid, // Numeric
+          'status': true, // Payment successful
+          'semester': _semester ?? 1,
+          'created_at': now.toIso8601String(),
+          'gateway_payment_id': paymentId,
+        });
+      }
+
+      // Update Local Preferences immediately so Home Screen reflects the change
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('fee_status', 'Paid');
+      
+    } catch (e) {
+      debugPrint('Error saving payment: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Payment succeeded but failed to save: $e')),
+      );
+      // We might still want to show success in UI locally?
+    }
+
     final paymentDetails = {
-      'title': 'Quarter 3 Fees',
+      'title': 'Semester ${_semester ?? 1} Fees',
       'date': date,
-      'amount': '₹4500.00',
+      'amount': '₹${amountPaid.toStringAsFixed(2)}',
       'paymentId': paymentId,
     };
     
@@ -52,16 +176,18 @@ class _FeePaymentScreenState extends State<FeePaymentScreen> {
     });
     
     // Navigate naturally after state update
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => PaymentReceiptScreen(paymentDetails: paymentDetails),
-      ),
-    );
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Payment Successful! Payment ID: $paymentId')),
-    );
+    if (mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PaymentReceiptScreen(paymentDetails: paymentDetails),
+        ),
+      );
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Payment Successful! Payment ID: $paymentId')),
+      );
+    }
   }
 
   void _handlePaymentError(PaymentFailureResponse response) {
@@ -77,14 +203,25 @@ class _FeePaymentScreenState extends State<FeePaymentScreen> {
   }
 
   void _openRazorpay() {
+    if (_amountDue <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No payment due')),
+      );
+      return;
+    }
+
     var options = {
       'key': 'rzp_test_SKJarDIhvjFJgi',
       'amount': (_amountDue * 100).toInt(),
       'name': 'Bus Management System',
-      'description': 'Fee Payment',
+      'description': 'Semester ${_semester ?? 1} Fee Payment',
       'prefill': {
-        'contact': '8281631936',
-        'email': 'johanjk.csb2327@example.com',
+        'contact': '8281631936', // Ideally fetched from profile
+        'email': _studentEmail ?? 'student@example.com',
+      },
+      'notes': {
+        'student_id': _studentId ?? 'unknown',
+        'semester': _semester ?? 'unknown',
       },
       'external': {
         'wallets': ['paytm', 'googlepay', 'phonepe']
@@ -92,8 +229,9 @@ class _FeePaymentScreenState extends State<FeePaymentScreen> {
     };
 
     try {
-      _razorpay.open(options, context: context);
+      _razorpay.open(options);
     } catch (e) {
+      debugPrint('Error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
       );
@@ -102,6 +240,12 @@ class _FeePaymentScreenState extends State<FeePaymentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
     final subColor = isDark ? Colors.grey[400] : Colors.grey[500];

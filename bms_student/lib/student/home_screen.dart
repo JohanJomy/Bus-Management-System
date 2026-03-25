@@ -14,6 +14,7 @@ class StudentHomeScreen extends StatefulWidget {
 class _StudentHomeScreenState extends State<StudentHomeScreen> {
   int _currentIndex = 0;
   late final PageController _pageController;
+  final GlobalKey<_HomeContentState> _homeKey = GlobalKey();
 
   @override
   void initState() {
@@ -27,11 +28,11 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     super.dispose();
   }
 
-  final List<Widget> _pages = const [
-    HomeContent(),
-    LiveTrackingScreen(),
-    FeePaymentScreen(),
-    ProfileScreen(),
+  late final List<Widget> _pages = [
+    HomeContent(key: _homeKey),
+    const LiveTrackingScreen(),
+    const FeePaymentScreen(),
+    const ProfileScreen(),
   ];
 
   @override
@@ -44,6 +45,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         onPageChanged: (index) {
           setState(() {
             _currentIndex = index;
+            if (index == 0) {
+              _homeKey.currentState?._loadStudentDetails();
+            }
           });
         },
         physics: const BouncingScrollPhysics(), // Optional: Allows swiping
@@ -62,6 +66,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     );
     setState(() {
       _currentIndex = index;
+      if (index == 0) {
+        _homeKey.currentState?._loadStudentDetails();
+      }
     });
   }
 

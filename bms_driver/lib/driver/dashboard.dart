@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'home_screen.dart';
-import 'routes_screen.dart';
 import 'students_screen.dart';
-import 'settings_screen.dart';
+import 'routes_screen.dart';
 
 class DriverDashboard extends StatefulWidget {
   const DriverDashboard({super.key});
@@ -14,13 +13,6 @@ class DriverDashboard extends StatefulWidget {
 
 class _DriverDashboardState extends State<DriverDashboard> {
   int _currentIndex = 0;
-
-  late final List<Widget> _pages = <Widget>[
-    const DriverHomeScreen(),
-    const DriverRoutesScreen(),
-    const DriverStudentsScreen(),
-    const DriverSettingsScreen(),
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +25,14 @@ class _DriverDashboardState extends State<DriverDashboard> {
 
     return Scaffold(
       backgroundColor: bgColor,
-      body: _pages[_currentIndex],
+      body: IndexedStack(
+        index: _currentIndex,
+        children: const [
+          DriverHomeScreen(),
+          DriverRoutesScreen(),
+          DriverStudentsScreen(),
+        ],
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (int index) {
@@ -51,16 +50,12 @@ class _DriverDashboardState extends State<DriverDashboard> {
             label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.alt_route),
+            icon: Icon(Icons.route),
             label: 'Routes',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.badge),
+            icon: Icon(Icons.people),
             label: 'Students',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
           ),
         ],
       ),
