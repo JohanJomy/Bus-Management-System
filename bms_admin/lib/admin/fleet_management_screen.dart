@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/bus_service.dart';
 import '../models/bus_model.dart';
+import 'app_theme.dart';
 
 class FleetManagementScreen extends StatefulWidget {
   const FleetManagementScreen({super.key});
@@ -346,7 +347,10 @@ class _FleetManagementScreenState extends State<FleetManagementScreen> {
             );
           } else {
             // Desktop: flexible full-width table-like layout
-            final dividerColor = Colors.grey[200]!;
+            final dividerColor = borderColor(context);
+            final headerBg = inputFillColor(context);
+            final headerText = onSurfaceVariant(context);
+            final bodyText = onSurface(context);
             return Column(
               children: [
                 Container(
@@ -355,23 +359,70 @@ class _FleetManagementScreenState extends State<FleetManagementScreen> {
                     vertical: 14,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.grey[50],
+                    color: headerBg,
                     borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(12),
                       topRight: Radius.circular(12),
                     ),
                   ),
                   child: Row(
-                    children: const [
-                      Expanded(flex: 2, child: Text('BUS #')),
-                      Expanded(flex: 2, child: Text('CAPACITY')),
-                      Expanded(flex: 2, child: Text('BUS ID')),
-                      Expanded(flex: 2, child: Text('STATUS')),
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          'BUS #',
+                          style: TextStyle(
+                            color: headerText,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          'CAPACITY',
+                          style: TextStyle(
+                            color: headerText,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          'BUS ID',
+                          style: TextStyle(
+                            color: headerText,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          'STATUS',
+                          style: TextStyle(
+                            color: headerText,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ),
                       Expanded(
                         flex: 2,
                         child: Align(
                           alignment: Alignment.centerRight,
-                          child: Text('ACTIONS'),
+                          child: Text(
+                            'ACTIONS',
+                            style: TextStyle(
+                              color: headerText,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -392,11 +443,26 @@ class _FleetManagementScreenState extends State<FleetManagementScreen> {
                           flex: 2,
                           child: Text(
                             '#${bus.busNumber}',
-                            style: const TextStyle(fontWeight: FontWeight.w600),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: bodyText,
+                            ),
                           ),
                         ),
-                        Expanded(flex: 2, child: Text('${bus.totalCapacity}')),
-                        Expanded(flex: 2, child: Text('BUS-${bus.id}')),
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            '${bus.totalCapacity}',
+                            style: TextStyle(color: bodyText),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            'BUS-${bus.id}',
+                            style: TextStyle(color: bodyText),
+                          ),
+                        ),
                         Expanded(
                           flex: 2,
                           child: Align(

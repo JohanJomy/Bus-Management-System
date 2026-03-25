@@ -113,71 +113,6 @@ class FeeManagementScreen extends StatelessWidget {
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 16),
-                            Wrap(
-                              spacing: 12,
-                              runSpacing: 8,
-                              children: [
-                                OutlinedButton.icon(
-                                  style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 20,
-                                      vertical: 14,
-                                    ),
-                                    foregroundColor: _primaryColor,
-                                    side: BorderSide(
-                                      color: _primaryColor.withValues(
-                                        alpha: 0.4,
-                                      ),
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  onPressed: () {},
-                                  icon: const Icon(
-                                    Icons.upload_file_outlined,
-                                    size: 20,
-                                  ),
-                                  label: const Text(
-                                    'Export Report',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                                ElevatedButton.icon(
-                                  style: ElevatedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 20,
-                                      vertical: 14,
-                                    ),
-                                    backgroundColor: _primaryColor,
-                                    foregroundColor: Colors.white,
-                                    elevation: 4,
-                                    shadowColor: _primaryColor.withValues(
-                                      alpha: 0.3,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  onPressed: () {},
-                                  icon: const Icon(
-                                    Icons.notifications_active_outlined,
-                                    size: 20,
-                                  ),
-                                  label: const Text(
-                                    'Send Reminders',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
                           ],
                         ),
 
@@ -431,11 +366,12 @@ class _FeeConfigurationCardState extends State<_FeeConfigurationCard> {
   }
 
   List<Map<String, dynamic>> get _filteredStops {
-    final sorted = [...widget.stops]..sort((a, b) {
-      final aName = a['stop_name']?.toString().toLowerCase() ?? '';
-      final bName = b['stop_name']?.toString().toLowerCase() ?? '';
-      return aName.compareTo(bName);
-    });
+    final sorted = [...widget.stops]
+      ..sort((a, b) {
+        final aName = a['stop_name']?.toString().toLowerCase() ?? '';
+        final bName = b['stop_name']?.toString().toLowerCase() ?? '';
+        return aName.compareTo(bName);
+      });
 
     if (_searchQuery.isEmpty) {
       return sorted;
