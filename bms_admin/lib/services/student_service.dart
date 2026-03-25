@@ -7,20 +7,36 @@ import '../config/supabase_config.dart';
 class StudentService {
   static const String baseUrl = '${SupabaseConfig.projectUrl}/rest/v1';
 
-  /// Retrieves all students
+  /// Retrieves all students with pagination support (1000 rows per chunk)
   Future<List<Student>> getAllStudents() async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/students'),
-        headers: SupabaseConfig.getHeaders(),
-      );
-      
-      if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        return data.map((student) => Student.fromJson(student)).toList();
-      } else {
-        throw Exception('Failed to load students: ${response.statusCode}');
+      final List<Student> allStudents = [];
+      const int pageSize = 1000;
+      int offset = 0;
+      bool hasMore = true;
+
+      while (hasMore) {
+        final response = await http.get(
+          Uri.parse('$baseUrl/students?limit=$pageSize&offset=$offset'),
+          headers: SupabaseConfig.getHeaders(),
+        );
+
+        if (response.statusCode == 200) {
+          final List<dynamic> data = jsonDecode(response.body);
+          if (data.isEmpty) {
+            hasMore = false;
+          } else {
+            allStudents.addAll(
+              data.map((student) => Student.fromJson(student)).toList(),
+            );
+            offset += pageSize;
+          }
+        } else {
+          throw Exception('Failed to load students: ${response.statusCode}');
+        }
       }
+
+      return allStudents;
     } catch (e) {
       throw Exception('Error fetching students: $e');
     }
@@ -33,7 +49,7 @@ class StudentService {
         Uri.parse('$baseUrl/students?id=eq.$studentId'),
         headers: SupabaseConfig.getHeaders(),
       );
-      
+
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         return data.isNotEmpty ? Student.fromJson(data[0]) : null;
@@ -44,39 +60,75 @@ class StudentService {
     }
   }
 
-  /// Gets all students with their payment information
+  /// Gets all students with their payment information with pagination
   Future<List<Map<String, dynamic>>> getAllStudentsWithPayments() async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/students?select=*,payments(*)'),
-        headers: SupabaseConfig.getHeaders(),
-      );
-      
-      if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        return data.cast<Map<String, dynamic>>();
-      } else {
-        throw Exception('Failed to load students with payments: ${response.statusCode}');
+      final List<Map<String, dynamic>> allStudents = [];
+      const int pageSize = 1000;
+      int offset = 0;
+      bool hasMore = true;
+
+      while (hasMore) {
+        final response = await http.get(
+          Uri.parse(
+            '$baseUrl/students?select=*,payments(*)&limit=$pageSize&offset=$offset',
+          ),
+          headers: SupabaseConfig.getHeaders(),
+        );
+
+        if (response.statusCode == 200) {
+          final List<dynamic> data = jsonDecode(response.body);
+          if (data.isEmpty) {
+            hasMore = false;
+          } else {
+            allStudents.addAll(data.cast<Map<String, dynamic>>());
+            offset += pageSize;
+          }
+        } else {
+          throw Exception(
+            'Failed to load students with payments: ${response.statusCode}',
+          );
+        }
       }
+
+      return allStudents;
     } catch (e) {
       throw Exception('Error fetching students with payments: $e');
     }
   }
 
-  /// Gets students by boarding stop
+  /// Gets students by boarding stop with pagination
   Future<List<Student>> getStudentsByBoardingStop(String stopId) async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/students?boarding_stop_id=eq.$stopId'),
-        headers: SupabaseConfig.getHeaders(),
-      );
-      
-      if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        return data.map((student) => Student.fromJson(student)).toList();
-      } else {
-        throw Exception('Failed to load students: ${response.statusCode}');
+      final List<Student> allStudents = [];
+      const int pageSize = 1000;
+      int offset = 0;
+      bool hasMore = true;
+
+      while (hasMore) {
+        final response = await http.get(
+          Uri.parse(
+            '$baseUrl/students?boarding_stop_id=eq.$stopId&limit=$pageSize&offset=$offset',
+          ),
+          headers: SupabaseConfig.getHeaders(),
+        );
+
+        if (response.statusCode == 200) {
+          final List<dynamic> data = jsonDecode(response.body);
+          if (data.isEmpty) {
+            hasMore = false;
+          } else {
+            allStudents.addAll(
+              data.map((student) => Student.fromJson(student)).toList(),
+            );
+            offset += pageSize;
+          }
+        } else {
+          throw Exception('Failed to load students: ${response.statusCode}');
+        }
       }
+
+      return allStudents;
     } catch (e) {
       throw Exception('Error fetching students by stop: $e');
     }
@@ -90,7 +142,7 @@ class StudentService {
         headers: SupabaseConfig.getHeaders(),
         body: jsonEncode(student.toJson()),
       );
-      
+
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         return Student.fromJson(data[0]);
@@ -110,7 +162,7 @@ class StudentService {
         headers: SupabaseConfig.getHeaders(),
         body: jsonEncode(student.toJson()),
       );
-      
+
       if (response.statusCode == 201) {
         final List<dynamic> data = jsonDecode(response.body);
         return Student.fromJson(data[0]);
@@ -129,7 +181,7 @@ class StudentService {
         Uri.parse('$baseUrl/students?id=eq.$studentId'),
         headers: SupabaseConfig.getHeaders(),
       );
-      
+
       if (response.statusCode != 204) {
         throw Exception('Failed to delete student: ${response.statusCode}');
       }
@@ -145,7 +197,7 @@ class StudentService {
         Uri.parse('$baseUrl/payments?student_id=eq.$studentId'),
         headers: SupabaseConfig.getHeaders(),
       );
-      
+
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         return data.map((payment) => Payment.fromJson(payment)).toList();
@@ -157,62 +209,124 @@ class StudentService {
     }
   }
 
-  /// Gets students who have paid fees
+  /// Gets students who have paid fees with pagination
   Future<List<Student>> getStudentsWithPaidFees() async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/students?select=*,payments(*)'),
-        headers: SupabaseConfig.getHeaders(),
-      );
-      
-      if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        final students = data.map((student) => Student.fromJson(student)).toList();
-        // Filter students with paid fees
-        return students.where((student) => (student.toJson()['payments'] as List?)?.isNotEmpty ?? false).toList();
-      } else {
-        throw Exception('Failed to load students: ${response.statusCode}');
+      final List<Student> allStudents = [];
+      const int pageSize = 1000;
+      int offset = 0;
+      bool hasMore = true;
+
+      while (hasMore) {
+        final response = await http.get(
+          Uri.parse(
+            '$baseUrl/students?select=*,payments(*)&limit=$pageSize&offset=$offset',
+          ),
+          headers: SupabaseConfig.getHeaders(),
+        );
+
+        if (response.statusCode == 200) {
+          final List<dynamic> data = jsonDecode(response.body);
+          if (data.isEmpty) {
+            hasMore = false;
+          } else {
+            allStudents.addAll(
+              data.map((student) => Student.fromJson(student)).toList(),
+            );
+            offset += pageSize;
+          }
+        } else {
+          throw Exception('Failed to load students: ${response.statusCode}');
+        }
       }
+
+      // Filter students with paid fees
+      return allStudents
+          .where(
+            (student) =>
+                (student.toJson()['payments'] as List?)?.isNotEmpty ?? false,
+          )
+          .toList();
     } catch (e) {
       throw Exception('Error fetching students with paid fees: $e');
     }
   }
 
-  /// Gets students who have NOT paid fees
+  /// Gets students who have NOT paid fees with pagination
   Future<List<Student>> getStudentsWithUnpaidFees() async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/students?select=*,payments(*)'),
-        headers: SupabaseConfig.getHeaders(),
-      );
-      
-      if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        final students = data.map((student) => Student.fromJson(student)).toList();
-        // Filter students without paid fees
-        return students.where((student) => (student.toJson()['payments'] as List?)?.isEmpty ?? true).toList();
-      } else {
-        throw Exception('Failed to load students: ${response.statusCode}');
+      final List<Student> allStudents = [];
+      const int pageSize = 1000;
+      int offset = 0;
+      bool hasMore = true;
+
+      while (hasMore) {
+        final response = await http.get(
+          Uri.parse(
+            '$baseUrl/students?select=*,payments(*)&limit=$pageSize&offset=$offset',
+          ),
+          headers: SupabaseConfig.getHeaders(),
+        );
+
+        if (response.statusCode == 200) {
+          final List<dynamic> data = jsonDecode(response.body);
+          if (data.isEmpty) {
+            hasMore = false;
+          } else {
+            allStudents.addAll(
+              data.map((student) => Student.fromJson(student)).toList(),
+            );
+            offset += pageSize;
+          }
+        } else {
+          throw Exception('Failed to load students: ${response.statusCode}');
+        }
       }
+
+      // Filter students without paid fees
+      return allStudents
+          .where(
+            (student) =>
+                (student.toJson()['payments'] as List?)?.isEmpty ?? true,
+          )
+          .toList();
     } catch (e) {
       throw Exception('Error fetching students with unpaid fees: $e');
     }
   }
 
-  /// Search students by name or email
+  /// Search students by name or email with pagination
   Future<List<Student>> searchStudents(String query) async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/students?or=(full_name.ilike.%$query%,email.ilike.%$query%)'),
-        headers: SupabaseConfig.getHeaders(),
-      );
-      
-      if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        return data.map((student) => Student.fromJson(student)).toList();
-      } else {
-        throw Exception('Failed to search students: ${response.statusCode}');
+      final List<Student> allStudents = [];
+      const int pageSize = 1000;
+      int offset = 0;
+      bool hasMore = true;
+
+      while (hasMore) {
+        final response = await http.get(
+          Uri.parse(
+            '$baseUrl/students?or=(full_name.ilike.%$query%,email.ilike.%$query%)&limit=$pageSize&offset=$offset',
+          ),
+          headers: SupabaseConfig.getHeaders(),
+        );
+
+        if (response.statusCode == 200) {
+          final List<dynamic> data = jsonDecode(response.body);
+          if (data.isEmpty) {
+            hasMore = false;
+          } else {
+            allStudents.addAll(
+              data.map((student) => Student.fromJson(student)).toList(),
+            );
+            offset += pageSize;
+          }
+        } else {
+          throw Exception('Failed to search students: ${response.statusCode}');
+        }
       }
+
+      return allStudents;
     } catch (e) {
       throw Exception('Error searching students: $e');
     }

@@ -15,6 +15,8 @@ class BoardingListScreen extends StatefulWidget {
 }
 
 class _BoardingListScreenState extends State<BoardingListScreen> {
+  static const int _stopsPageSize = 10;
+
   final StudentService _studentService = StudentService();
   final BusService _busService = BusService();
   final TextEditingController _searchController = TextEditingController();
@@ -22,6 +24,7 @@ class _BoardingListScreenState extends State<BoardingListScreen> {
   List<Stop> _stops = [];
   final Map<int, List<Student>> _stopStudents = {};
   String _stopSearchQuery = '';
+  int _visibleStopsCount = _stopsPageSize;
 
   int? _selectedStopId;
   bool _isLoading = true;
@@ -42,8 +45,26 @@ class _BoardingListScreenState extends State<BoardingListScreen> {
     setState(() => _isLoading = true);
     try {
       final stops = await _busService.getAllStops();
+      stops.sort(
+        (a, b) => a.stopName.toLowerCase().compareTo(b.stopName.toLowerCase()),
+      );
+
+      final allStudents = await _studentService.getAllStudents();
+      final groupedStudents = <int, List<Student>>{};
+      for (final student in allStudents) {
+        final stopId = student.boardingStopId;
+        if (stopId == null) {
+          continue;
+        }
+        groupedStudents.putIfAbsent(stopId, () => <Student>[]).add(student);
+      }
+
       setState(() {
         _stops = stops;
+        _stopStudents
+          ..clear()
+          ..addAll(groupedStudents);
+        _visibleStopsCount = _stopsPageSize;
         if (_selectedStopId == null && stops.isNotEmpty) {
           _selectedStopId = stops.first.id;
         }
@@ -115,6 +136,16 @@ class _BoardingListScreenState extends State<BoardingListScreen> {
         .toList();
   }
 
+  List<Stop> get _visibleStops => _filteredStops.take(_visibleStopsCount).toList();
+
+  bool get _hasMoreStops => _visibleStops.length < _filteredStops.length;
+
+  void _loadMoreStops() {
+    setState(() {
+      _visibleStopsCount += _stopsPageSize;
+    });
+  }
+
   Future<void> _onStopSearchChanged(String value) async {
     final query = value.trim().toLowerCase();
     final matches = query.isEmpty
@@ -133,6 +164,7 @@ class _BoardingListScreenState extends State<BoardingListScreen> {
       setState(() {
         _stopSearchQuery = value;
         _selectedStopId = nextSelectedId;
+        _visibleStopsCount = _stopsPageSize;
       });
     }
 
@@ -403,6 +435,8 @@ class _BoardingListScreenState extends State<BoardingListScreen> {
     final selectedCard = isDark
         ? const Color(0xFF223450)
         : const Color(0xFFF2F7FF);
+    final visibleStops = _visibleStops;
+    final hasMoreStops = _hasMoreStops;
 
     return Container(
       decoration: BoxDecoration(
@@ -415,14 +449,27 @@ class _BoardingListScreenState extends State<BoardingListScreen> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-            child: Text(
-              'ALL STOPS',
-              style: theme.textTheme.labelMedium?.copyWith(
-                letterSpacing: 1.1,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: theme.textTheme.bodySmall?.color?.withOpacity(0.8),
-              ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'ALL STOPS',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      letterSpacing: 1.1,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: theme.textTheme.bodySmall?.color?.withOpacity(0.8),
+                    ),
+                  ),
+                ),
+                Text(
+                  '${visibleStops.length}/${_filteredStops.length}',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: theme.textTheme.bodySmall?.color?.withOpacity(0.8),
+                  ),
+                ),
+              ],
             ),
           ),
           Expanded(
@@ -439,84 +486,108 @@ class _BoardingListScreenState extends State<BoardingListScreen> {
                       textAlign: TextAlign.center,
                     ),
                   )
-                : ListView.separated(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    itemCount: _filteredStops.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
-                    itemBuilder: (context, index) {
-                      final stop = _filteredStops[index];
-                      final isSelected = _selectedStopId == stop.id;
-                      final studentCount = _stopStudents[stop.id]?.length;
+                : Column(
+                    children: [
+                      Expanded(
+                        child: ListView.separated(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          itemCount: visibleStops.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 8),
+                          itemBuilder: (context, index) {
+                            final stop = visibleStops[index];
+                            final isSelected = _selectedStopId == stop.id;
+                            final studentCount = _stopStudents[stop.id]?.length;
 
-                      return InkWell(
-                        borderRadius: BorderRadius.circular(10),
-                        onTap: () {
-                          setState(() => _selectedStopId = stop.id);
-                          _loadStudentsForStop(stop.id);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: isSelected ? selectedCard : cardColor,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: isSelected
-                                  ? const Color(0xFF3E7CF0)
-                                  : borderColor.withOpacity(0.8),
-                              width: isSelected ? 1.4 : 1,
+                            return InkWell(
+                              borderRadius: BorderRadius.circular(10),
+                              onTap: () {
+                                setState(() => _selectedStopId = stop.id);
+                                _loadStudentsForStop(stop.id);
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: isSelected ? selectedCard : cardColor,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? const Color(0xFF3E7CF0)
+                                        : borderColor.withOpacity(0.8),
+                                    width: isSelected ? 1.4 : 1,
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            stop.stopName.toUpperCase(),
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 16,
+                                              color: isSelected
+                                                  ? const Color(0xFF4F8EFF)
+                                                  : theme.colorScheme.onSurface,
+                                            ),
+                                          ),
+                                        ),
+                                        Text(
+                                          _formatCurrency(stop.feeAmount),
+                                          style: TextStyle(
+                                            fontSize: 28,
+                                            fontWeight: FontWeight.w800,
+                                            color: theme.colorScheme.onSurface,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        _metaChip(
+                                          icon: Icons.tag_outlined,
+                                          text: 'ID ${stop.id}',
+                                          isDark: isDark,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        _metaChip(
+                                          icon: Icons.access_time_rounded,
+                                          text: stop.arrivalTime ?? '--:--',
+                                          isDark: isDark,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        _metaChip(
+                                          icon: Icons.groups_2_outlined,
+                                          text: '${studentCount ?? '--'} Students',
+                                          isDark: isDark,
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      if (hasMoreStops)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(10, 6, 10, 12),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: _loadMoreStops,
+                              icon: const Icon(Icons.expand_more, size: 18),
+                              label: const Text('Load More'),
                             ),
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      stop.stopName.toUpperCase(),
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 16,
-                                        color: isSelected
-                                            ? const Color(0xFF4F8EFF)
-                                            : theme.colorScheme.onSurface,
-                                      ),
-                                    ),
-                                  ),
-                                  Text(
-                                    _formatCurrency(stop.feeAmount),
-                                    style: TextStyle(
-                                      fontSize: 28,
-                                      fontWeight: FontWeight.w800,
-                                      color: theme.colorScheme.onSurface,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  _metaChip(
-                                    icon: Icons.access_time_rounded,
-                                    text: stop.arrivalTime ?? '--:--',
-                                    isDark: isDark,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  _metaChip(
-                                    icon: Icons.groups_2_outlined,
-                                    text: '${studentCount ?? '--'} Students',
-                                    isDark: isDark,
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
                         ),
-                      );
-                    },
+                    ],
                   ),
           ),
         ],
@@ -648,12 +719,6 @@ class _BoardingListScreenState extends State<BoardingListScreen> {
                   spacing: 10,
                   runSpacing: 10,
                   children: [
-                    _actionButton(
-                      icon: Icons.ios_share_outlined,
-                      label: 'Export List',
-                      outlined: true,
-                      onPressed: () {},
-                    ),
                     _actionButton(
                       icon: Icons.add,
                       label: 'Add Student',

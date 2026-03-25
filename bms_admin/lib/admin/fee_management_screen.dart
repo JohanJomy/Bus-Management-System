@@ -113,71 +113,6 @@ class FeeManagementScreen extends StatelessWidget {
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 16),
-                            Wrap(
-                              spacing: 12,
-                              runSpacing: 8,
-                              children: [
-                                OutlinedButton.icon(
-                                  style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 20,
-                                      vertical: 14,
-                                    ),
-                                    foregroundColor: _primaryColor,
-                                    side: BorderSide(
-                                      color: _primaryColor.withValues(
-                                        alpha: 0.4,
-                                      ),
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  onPressed: () {},
-                                  icon: const Icon(
-                                    Icons.upload_file_outlined,
-                                    size: 20,
-                                  ),
-                                  label: const Text(
-                                    'Export Report',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                                ElevatedButton.icon(
-                                  style: ElevatedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 20,
-                                      vertical: 14,
-                                    ),
-                                    backgroundColor: _primaryColor,
-                                    foregroundColor: Colors.white,
-                                    elevation: 4,
-                                    shadowColor: _primaryColor.withValues(
-                                      alpha: 0.3,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  onPressed: () {},
-                                  icon: const Icon(
-                                    Icons.notifications_active_outlined,
-                                    size: 20,
-                                  ),
-                                  label: const Text(
-                                    'Send Reminders',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
                           ],
                         ),
 
@@ -418,8 +353,11 @@ class _FeeConfigurationCard extends StatefulWidget {
 }
 
 class _FeeConfigurationCardState extends State<_FeeConfigurationCard> {
+  static const int _pageSize = 10;
+
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  int _visibleCount = _pageSize;
 
   @override
   void dispose() {
@@ -428,11 +366,18 @@ class _FeeConfigurationCardState extends State<_FeeConfigurationCard> {
   }
 
   List<Map<String, dynamic>> get _filteredStops {
+    final sorted = [...widget.stops]
+      ..sort((a, b) {
+        final aName = a['stop_name']?.toString().toLowerCase() ?? '';
+        final bName = b['stop_name']?.toString().toLowerCase() ?? '';
+        return aName.compareTo(bName);
+      });
+
     if (_searchQuery.isEmpty) {
-      return widget.stops;
+      return sorted;
     }
     final q = _searchQuery.toLowerCase();
-    return widget.stops.where((stop) {
+    return sorted.where((stop) {
       final name = stop['stop_name']?.toString().toLowerCase() ?? '';
       return name.contains(q);
     }).toList();
@@ -528,6 +473,8 @@ class _FeeConfigurationCardState extends State<_FeeConfigurationCard> {
   @override
   Widget build(BuildContext context) {
     final filteredStops = _filteredStops;
+    final visibleStops = filteredStops.take(_visibleCount).toList();
+    final hasMore = visibleStops.length < filteredStops.length;
 
     return Container(
       decoration: BoxDecoration(
@@ -562,7 +509,7 @@ class _FeeConfigurationCardState extends State<_FeeConfigurationCard> {
                       ),
                     ),
                     Text(
-                      '${filteredStops.length} stops',
+                      '${visibleStops.length}/${filteredStops.length} stops',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -577,6 +524,7 @@ class _FeeConfigurationCardState extends State<_FeeConfigurationCard> {
                   onChanged: (value) {
                     setState(() {
                       _searchQuery = value.trim();
+                      _visibleCount = _pageSize;
                     });
                   },
                   decoration: InputDecoration(
@@ -614,17 +562,32 @@ class _FeeConfigurationCardState extends State<_FeeConfigurationCard> {
                   )
                 : Column(
                     children: [
-                      for (int i = 0; i < filteredStops.length; i++) ...[
+                      for (int i = 0; i < visibleStops.length; i++) ...[
                         _buildStopFeeItem(
                           context,
-                          filteredStops[i],
+                          visibleStops[i],
                           'Monthly transport fee',
                           _formatCurrency(
-                            _asDouble(filteredStops[i]['fee_amount']),
+                            _asDouble(visibleStops[i]['fee_amount']),
                           ),
                         ),
-                        if (i != filteredStops.length - 1)
+                        if (i != visibleStops.length - 1)
                           const SizedBox(height: 16),
+                      ],
+                      if (hasMore) ...[
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              setState(() {
+                                _visibleCount += _pageSize;
+                              });
+                            },
+                            icon: const Icon(Icons.expand_more, size: 18),
+                            label: const Text('Load More'),
+                          ),
+                        ),
                       ],
                       const SizedBox(height: 20),
                       OutlinedButton.icon(

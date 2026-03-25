@@ -13,11 +13,16 @@ class StudentManagementScreen extends StatefulWidget {
 }
 
 class _StudentManagementScreenState extends State<StudentManagementScreen> {
+  static const int _pageSize = 10;
+
   final StudentService _studentService = StudentService();
   final TextEditingController _searchController = TextEditingController();
 
   List<Student> _students = [];
   List<Student> _filteredStudents = [];
+  Map<int, double> _stopFeeMap = {};
+  Map<String, double> _studentPaidAmount = {};
+  int _visibleCount = _pageSize;
   bool _isLoading = true;
   String? _errorMessage;
 
@@ -38,9 +43,50 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
     setState(() => _isLoading = true);
     try {
       final students = await _studentService.getAllStudents();
+      students.sort(
+        (a, b) => a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase()),
+      );
+
+      // Load stops and payments data
+      final stopsData =
+          await _studentService.getAllStudentsWithPayments();
+
+      // Build stop fee map
+      final Map<int, double> stopFeeMap = {};
+      final Map<String, double> studentPaidAmount = {};
+
+      // Extract stop fees from students data
+      for (final studentData in stopsData) {
+        final stopId = studentData['boarding_stop_id'];
+        final feeAmount = studentData['fee_amount'];
+        if (stopId is int && feeAmount != null) {
+          stopFeeMap[stopId] ??= (feeAmount as num).toDouble();
+        }
+
+        // Calculate paid amount per student per semester
+        final studentId = studentData['id']?.toString();
+        final semester = studentData['semester'];
+        final payments = studentData['payments'] as List?;
+
+        if (studentId != null && semester != null && payments != null) {
+          final key = '$studentId|$semester';
+          double totalPaid = 0;
+          for (final payment in payments) {
+            if (payment['status'] == true) {
+              totalPaid +=
+                  ((payment['amount_paid'] as num?)?.toDouble() ?? 0);
+            }
+          }
+          studentPaidAmount[key] = totalPaid;
+        }
+      }
+
       setState(() {
         _students = students;
         _filteredStudents = students;
+        _stopFeeMap = stopFeeMap;
+        _studentPaidAmount = studentPaidAmount;
+        _visibleCount = _pageSize;
       });
     } catch (e) {
       setState(() => _errorMessage = 'Failed to load students');
@@ -52,15 +98,26 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
 
   void _filterStudents() {
     final query = _searchController.text.toLowerCase().trim();
+    final filtered = _students
+        .where(
+          (student) =>
+              student.fullName.toLowerCase().contains(query) ||
+              student.email.toLowerCase().contains(query),
+        )
+        .toList();
+
     setState(() {
-      _filteredStudents = _students
-          .where(
-            (student) =>
-                student.fullName.toLowerCase().contains(query) ||
-                student.email.toLowerCase().contains(query),
-          )
-          .toList();
+      _filteredStudents = filtered;
+      _visibleCount = _pageSize;
     });
+  }
+
+  List<Student> get _visibleStudents => _filteredStudents.take(_visibleCount).toList();
+
+  bool get _hasMoreStudents => _visibleStudents.length < _filteredStudents.length;
+
+  void _loadMoreStudents() {
+    setState(() => _visibleCount += _pageSize);
   }
 
   void _showError(String message) {
@@ -94,16 +151,32 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
     return inputFillColor(context);
   }
 
+  bool _hasPaid(Student student) {
+    if (student.boardingStopId == null || student.semester == null) {
+      return false;
+    }
+    final expectedFee =
+        _stopFeeMap[student.boardingStopId] ?? 0;
+    final key = '${student.id}|${student.semester}';
+    final paidAmount = _studentPaidAmount[key] ?? 0;
+    return paidAmount >= expectedFee;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final visibleStudents = _visibleStudents;
+    final hasMoreStudents = _hasMoreStudents;
+
     return Container(
       color: bgColor(context),
       padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            alignment: WrapAlignment.spaceBetween,
             children: [
               Text(
                 'Student Management',
@@ -113,27 +186,30 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                   color: onSurface(context),
                 ),
               ),
-              ElevatedButton.icon(
-                onPressed: _showAddStudentDialog,
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Add Student'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).primaryColor,
-                  foregroundColor: Colors.white,
-                  elevation: 2,
-                  shadowColor: Theme.of(
-                    context,
-                  ).primaryColor.withValues(alpha: 0.3),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 14,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  textStyle: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
+              SizedBox(
+                height: 48,
+                child: ElevatedButton.icon(
+                  onPressed: _showAddStudentDialog,
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Add Student'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).primaryColor,
+                    foregroundColor: Colors.white,
+                    elevation: 2,
+                    shadowColor: Theme.of(
+                      context,
+                    ).primaryColor.withValues(alpha: 0.3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 14,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),
@@ -162,37 +238,27 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                         children: [
                           Padding(
                             padding: const EdgeInsets.fromLTRB(18, 16, 18, 8),
-                            child: Text(
-                              'Active Student Directory',
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.w700,
-                                color: onSurface(context),
-                              ),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
-                            child: TextField(
-                              controller: _searchController,
-                              decoration: InputDecoration(
-                                hintText: 'Search students by name or email...',
-                                prefixIcon: const Icon(Icons.search),
-                                filled: true,
-                                fillColor: inputFillColor(context),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(
-                                    color: borderColor(context),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    'Active Student Directory',
+                                    style: TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.w700,
+                                      color: onSurface(context),
+                                    ),
                                   ),
                                 ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(
-                                    color: borderColor(context),
+                                Text(
+                                  '${visibleStudents.length}/${_filteredStudents.length}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: onSurfaceVariant(context),
                                   ),
                                 ),
-                              ),
+                              ],
                             ),
                           ),
                           const Divider(height: 1),
@@ -206,14 +272,40 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                                       ).textTheme.bodyLarge,
                                     ),
                                   )
-                                : ListView.builder(
-                                    itemCount: _filteredStudents.length,
-                                    itemBuilder: (context, index) => Padding(
-                                      padding: const EdgeInsets.all(8),
-                                      child: _buildStudentCard(
-                                        _filteredStudents[index],
+                                : Column(
+                                    children: [
+                                      Expanded(
+                                        child: ListView.builder(
+                                          itemCount: visibleStudents.length,
+                                          itemBuilder: (context, index) => Padding(
+                                            padding: const EdgeInsets.all(8),
+                                            child: _buildStudentCard(
+                                              visibleStudents[index],
+                                            ),
+                                          ),
+                                        ),
                                       ),
-                                    ),
+                                      if (hasMoreStudents)
+                                        Padding(
+                                          padding: const EdgeInsets.fromLTRB(
+                                            12,
+                                            0,
+                                            12,
+                                            12,
+                                          ),
+                                          child: SizedBox(
+                                            width: double.infinity,
+                                            child: OutlinedButton.icon(
+                                              onPressed: _loadMoreStudents,
+                                              icon: const Icon(
+                                                Icons.expand_more,
+                                                size: 18,
+                                              ),
+                                              label: const Text('Load More'),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
                                   ),
                           ),
                         ],
@@ -225,13 +317,27 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                       children: [
                         Padding(
                           padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                          child: Text(
-                            'Active Student Directory',
-                            style: TextStyle(
-                              fontSize: 30,
-                              fontWeight: FontWeight.w700,
-                              color: onSurface(context),
-                            ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Active Student Directory',
+                                  style: TextStyle(
+                                    fontSize: 30,
+                                    fontWeight: FontWeight.w700,
+                                    color: onSurface(context),
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                '${visibleStudents.length}/${_filteredStudents.length}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: onSurfaceVariant(context),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         Padding(
@@ -258,84 +364,146 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                             ),
                           ),
                         ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                flex: 3,
-                                child: Text(
-                                  'Student',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: onSurfaceVariant(context),
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                flex: 3,
-                                child: Text(
-                                  'Email',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: onSurfaceVariant(context),
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                flex: 3,
-                                child: Text(
-                                  'Course',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: onSurfaceVariant(context),
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                flex: 2,
-                                child: Text(
-                                  'Semester',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: onSurfaceVariant(context),
-                                  ),
-                                ),
-                              ),
-                              const Expanded(child: SizedBox()),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        const Divider(height: 1),
                         Expanded(
-                          child: _filteredStudents.isEmpty
-                              ? Center(
-                                  child: Text(
-                                    'No students found',
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.bodyLarge,
-                                  ),
-                                )
-                              : ListView.separated(
-                                  itemCount: _filteredStudents.length,
-                                  separatorBuilder: (_, __) =>
+                          child: LayoutBuilder(
+                            builder: (context, tableConstraints) {
+                              final tableWidth = tableConstraints.maxWidth < 1180
+                                  ? 1180.0
+                                  : tableConstraints.maxWidth;
+
+                              return SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: SizedBox(
+                                  width: tableWidth,
+                                  child: Column(
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 20,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              flex: 3,
+                                              child: Text(
+                                                'Student',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: onSurfaceVariant(context),
+                                                ),
+                                              ),
+                                            ),
+                                            Expanded(
+                                              flex: 3,
+                                              child: Text(
+                                                'Email',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: onSurfaceVariant(context),
+                                                ),
+                                              ),
+                                            ),
+                                            Expanded(
+                                              flex: 3,
+                                              child: Text(
+                                                'Course',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: onSurfaceVariant(context),
+                                                ),
+                                              ),
+                                            ),
+                                            Expanded(
+                                              flex: 2,
+                                              child: Text(
+                                                'Semester',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: onSurfaceVariant(context),
+                                                ),
+                                              ),
+                                            ),
+                                            Expanded(
+                                              flex: 2,
+                                              child: Text(
+                                                'Status',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: onSurfaceVariant(context),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
                                       const Divider(height: 1),
-                                  itemBuilder: (context, index) => Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 20,
-                                      vertical: 11,
-                                    ),
-                                    child: _buildDesktopStudentRow(
-                                      _filteredStudents[index],
-                                    ),
+                                      Expanded(
+                                        child: _filteredStudents.isEmpty
+                                            ? Center(
+                                                child: Text(
+                                                  'No students found',
+                                                  style: Theme.of(
+                                                    context,
+                                                  ).textTheme.bodyLarge,
+                                                ),
+                                              )
+                                            : Column(
+                                                children: [
+                                                  Expanded(
+                                                    child: ListView.separated(
+                                                      itemCount:
+                                                          visibleStudents.length,
+                                                      separatorBuilder: (_, __) =>
+                                                          const Divider(height: 1),
+                                                      itemBuilder: (context, index) =>
+                                                          Padding(
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                          horizontal: 20,
+                                                          vertical: 11,
+                                                        ),
+                                                        child: _buildDesktopStudentRow(
+                                                          visibleStudents[index],
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  if (hasMoreStudents)
+                                                    Padding(
+                                                      padding:
+                                                          const EdgeInsets.fromLTRB(
+                                                        20,
+                                                        0,
+                                                        20,
+                                                        14,
+                                                      ),
+                                                      child: SizedBox(
+                                                        width: double.infinity,
+                                                        child: OutlinedButton.icon(
+                                                          onPressed: _loadMoreStudents,
+                                                          icon: const Icon(
+                                                            Icons.expand_more,
+                                                            size: 18,
+                                                          ),
+                                                          label: const Text('Load More'),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                      ),
+                                    ],
                                   ),
                                 ),
+                              );
+                            },
+                          ),
                         ),
                       ],
                     );
@@ -350,7 +518,6 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
 
   Widget _buildDesktopStudentRow(Student student) {
     final sem = student.semester ?? 0;
-    final semProgress = sem <= 0 ? 0.0 : (sem.clamp(1, 8) / 8);
 
     return Row(
       children: [
@@ -396,7 +563,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
         Expanded(
           flex: 3,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            padding: const EdgeInsets.fromLTRB(10, 7, 34, 7),
             decoration: BoxDecoration(
               color: _courseChipColor(context, student.course),
               borderRadius: BorderRadius.circular(6),
@@ -414,30 +581,41 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
         ),
         Expanded(
           flex: 2,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                sem > 0 ? 'S$sem' : 'N/A',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: onSurface(context),
-                ),
+          child: Center(
+            child: Text(
+              sem > 0 ? 'S$sem' : 'N/A',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: onSurface(context),
               ),
-              const SizedBox(height: 6),
-              ClipRRect(
+            ),
+          ),
+        ),
+        Expanded(
+          flex: 2,
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: _hasPaid(student)
+                    ? const Color(0xFF22C55E).withValues(alpha: 0.1)
+                    : const Color(0xFFEF4444).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  minHeight: 5,
-                  value: semProgress,
-                  backgroundColor: inputFillColor(context),
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    Theme.of(context).primaryColor,
-                  ),
-                ),
               ),
-            ],
+              child: Text(
+                _hasPaid(student) ? 'Paid' : 'Pending',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: _hasPaid(student)
+                      ? const Color(0xFF22C55E)
+                      : const Color(0xFFEF4444),
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
           ),
         ),
         Expanded(

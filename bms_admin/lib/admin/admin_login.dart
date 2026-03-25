@@ -84,15 +84,15 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                       TextFormField(
                         controller: _emailController,
                         decoration: InputDecoration(
-                          labelText: "Admin Email",
-                          prefixIcon: const Icon(Icons.email_outlined),
+                          labelText: "Admin Username",
+                          prefixIcon: const Icon(Icons.person_outline),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
                         validator: (value) =>
-                            (value == null || !value.contains('@'))
-                                ? "Enter a valid email"
+                            (value == null || value.trim().isEmpty)
+                                ? "Enter username"
                                 : null,
                       ),
                       const SizedBox(height: 20),
@@ -119,7 +119,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                           ),
                         ),
                         validator: (value) =>
-                            (value == null || value.length < 6)
+                            (value == null || value.length < 5)
                                 ? "Password too short"
                                 : null,
                       ),
@@ -131,11 +131,26 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                         height: 56,
                         child: ElevatedButton(
                           onPressed: () {
-                            // For now, navigating directly to Dashboard
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const DashboardScreen(),
+                            if (!(_formKey.currentState?.validate() ?? false)) {
+                              return;
+                            }
+
+                            final username = _emailController.text.trim();
+                            final password = _passwordController.text.trim();
+
+                            if (username == 'admin' && password == 'admin') {
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const DashboardScreen(),
+                                ),
+                              );
+                              return;
+                            }
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Invalid username or password'),
                               ),
                             );
                           },
@@ -154,14 +169,6 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: Text(
-                          "Back to Role Selection",
-                          style: TextStyle(color: subTextColor),
                         ),
                       ),
                     ],

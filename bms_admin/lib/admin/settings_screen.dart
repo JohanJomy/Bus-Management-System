@@ -10,18 +10,14 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _nameController = TextEditingController(
-    text: "Alex Johnson",
+    text: "DEEPTHI C NAIR",
   );
   final TextEditingController _emailController = TextEditingController(
-    text: "alex.j@busadminpro.com",
+    text: "deepthi.c@saintgits.org",
   );
 
   String _selectedTheme = "Light Mode";
-  String _selectedTimezone = "(GMT-05:00) Eastern Time";
-
-  bool _emailAlerts = true;
-  bool _smsNotifications = false;
-  bool _pushNotifications = true;
+  String _selectedTimezone = "(GMT+05:30) India Standard Time";
 
   void _handleThemeChange(String? value) {
     if (value == null) return;
@@ -298,128 +294,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               },
             ),
           ),
-          const SizedBox(height: 24),
-
-          // ── Security + Notifications ────────────────────────────────
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final isSmallScreen = constraints.maxWidth < 600;
-
-              final securityCard = _sectionCard(
-                context: context,
-                icon: Icons.shield_outlined,
-                title: "Security",
-                child: _buildSecurityContent(),
-              );
-
-              final notificationsCard = _sectionCard(
-                context: context,
-                icon: Icons.notifications_active_outlined,
-                title: "Notifications",
-                child: _buildNotificationsContent(),
-              );
-
-              if (isSmallScreen) {
-                // Mobile: Stack vertically
-                return Column(
-                  children: [
-                    securityCard,
-                    const SizedBox(height: 24),
-                    notificationsCard,
-                  ],
-                );
-              } else {
-                // Desktop: Side by side
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: securityCard),
-                    const SizedBox(width: 24),
-                    Expanded(child: notificationsCard),
-                  ],
-                );
-              }
-            },
-          ),
-          const SizedBox(height: 32),
-
-          // ── Action buttons ──────────────────────────────────────────
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton(
-                onPressed: () {},
-                style: TextButton.styleFrom(
-                  foregroundColor: onSurfaceVariant(context),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 14,
-                  ),
-                ),
-                child: const Text("Discard Changes"),
-              ),
-              const SizedBox(width: 12),
-              ElevatedButton.icon(
-                onPressed: () {},
-                icon: const Icon(Icons.save_outlined, size: 18),
-                label: const Text("Save All Changes"),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF195DE6),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 14,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 32),
-
-          // ── Footer ──────────────────────────────────────────────────
-          Divider(color: borderColor(context)),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "© 2024 BusAdmin Pro. All rights reserved.",
-                style: TextStyle(
-                  fontSize: 12,
-                  color: onSurfaceVariant(context),
-                ),
-              ),
-              Wrap(
-                spacing: 16,
-                children: [
-                  Text(
-                    "Privacy Policy",
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: onSurfaceVariant(context),
-                    ),
-                  ),
-                  Text(
-                    "Terms of Service",
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: onSurfaceVariant(context),
-                    ),
-                  ),
-                  Text(
-                    "Support",
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: onSurfaceVariant(context),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
           const SizedBox(height: 8),
         ],
       ),
@@ -427,74 +301,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // ── Helper widgets ─────────────────────────────────────────────────
-
-  Widget _buildSecurityContent() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Change Password",
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: onSurface(context),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              "Last changed 3 months ago",
-              style: TextStyle(fontSize: 12, color: onSurfaceVariant(context)),
-            ),
-          ],
-        ),
-        OutlinedButton(
-          onPressed: () {},
-          style: OutlinedButton.styleFrom(
-            side: BorderSide(color: borderColor(context)),
-            foregroundColor: onSurface(context),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          child: const Text("Update"),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNotificationsContent() {
-    return Column(
-      children: [
-        _toggleRow(
-          context: context,
-          label: "Email Alerts",
-          icon: Icons.email_outlined,
-          value: _emailAlerts,
-          onChanged: (v) => setState(() => _emailAlerts = v),
-        ),
-        const SizedBox(height: 16),
-        _toggleRow(
-          context: context,
-          label: "SMS Notifications",
-          icon: Icons.sms_outlined,
-          value: _smsNotifications,
-          onChanged: (v) => setState(() => _smsNotifications = v),
-        ),
-        const SizedBox(height: 16),
-        _toggleRow(
-          context: context,
-          label: "Push Notifications",
-          icon: Icons.campaign_outlined,
-          value: _pushNotifications,
-          onChanged: (v) => setState(() => _pushNotifications = v),
-        ),
-      ],
-    );
-  }
 
   Widget _sectionCard({
     required BuildContext context,
@@ -661,29 +467,4 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _toggleRow({
-    required BuildContext context,
-    required String label,
-    required IconData icon,
-    required bool value,
-    required void Function(bool) onChanged,
-  }) {
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: onSurfaceVariant(context)),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            label,
-            style: TextStyle(fontSize: 14, color: onSurface(context)),
-          ),
-        ),
-        Switch(
-          value: value,
-          onChanged: onChanged,
-          activeColor: const Color(0xFF195DE6),
-        ),
-      ],
-    );
-  }
 }

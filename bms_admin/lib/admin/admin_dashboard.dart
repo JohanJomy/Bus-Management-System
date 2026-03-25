@@ -9,6 +9,7 @@ import 'bus_wise_student_screen.dart';
 import 'student_management_screen.dart';
 import 'boarding_list_screen.dart';
 import 'route_mapping_screen.dart';
+import 'bus_allocation_screen.dart';
 import 'app_theme.dart';
 import '../services/fee_metrics_service.dart';
 
@@ -31,6 +32,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     const StudentManagementScreen(),
     const BoardingListScreen(),
     const RouteMappingScreen(),
+    const BusAllocationScreen(),
     const SettingsScreen(),
   ];
 
@@ -57,7 +59,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Expanded(
                     child: Column(
                       children: [
-                        const Header(),
+                        Header(
+                          onProfileTap: () {
+                            setState(() {
+                              _selectedIndex = 8;
+                            });
+                          },
+                        ),
                         Expanded(
                           child: IndexedStack(
                             index: _selectedIndex,
@@ -92,8 +100,6 @@ class MainDashboardView extends StatelessWidget {
           const SizedBox(height: 32),
           const MetricsGrid(),
           const SizedBox(height: 32),
-          const MiddleLayout(),
-          const SizedBox(height: 32),
           const FleetTrackingOverview(),
         ],
       ),
@@ -103,11 +109,12 @@ class MainDashboardView extends StatelessWidget {
 
 // --- RESTORED: Header with Search Bar ---
 class Header extends StatelessWidget {
-  const Header({super.key});
+  final VoidCallback onProfileTap;
+
+  const Header({super.key, required this.onProfileTap});
 
   @override
   Widget build(BuildContext context) {
-    final dark = isDark(context);
     return Container(
       height: 64,
       color: surfaceColor(context),
@@ -117,36 +124,17 @@ class Header extends StatelessWidget {
           Expanded(
             child: Container(
               height: 40,
-              decoration: BoxDecoration(
-                color: inputFillColor(context),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: TextField(
-                style: TextStyle(color: onSurface(context)),
-                decoration: InputDecoration(
-                  hintText: "Search students, routes, or drivers...",
-                  hintStyle: TextStyle(
-                    fontSize: 14,
-                    color: onSurfaceVariant(context),
-                  ),
-                  prefixIcon: Icon(
-                    Icons.search,
-                    size: 20,
-                    color: onSurfaceVariant(context),
-                  ),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                ),
-              ),
             ),
           ),
           const SizedBox(width: 16),
-          Icon(Icons.notifications_none, color: onSurfaceVariant(context)),
-          const SizedBox(width: 16),
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: Theme.of(context).primaryColor,
-            child: const Icon(Icons.person, size: 20, color: Colors.white),
+          InkWell(
+            borderRadius: BorderRadius.circular(18),
+            onTap: onProfileTap,
+            child: CircleAvatar(
+              radius: 16,
+              backgroundColor: Theme.of(context).primaryColor,
+              child: const Icon(Icons.person, size: 20, color: Colors.white),
+            ),
           ),
           const SizedBox(width: 8),
           Text(
@@ -165,13 +153,42 @@ class Header extends StatelessWidget {
 // --- RESTORED: Welcome Section ---
 class WelcomeSection extends StatelessWidget {
   const WelcomeSection({super.key});
+
+  String _todayLabel() {
+    final now = DateTime.now();
+    const weekdays = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
+    const months = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+    return '${weekdays[now.weekday - 1]}, ${now.day} ${months[now.month - 1]} ${now.year}';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Welcome back, Admin",
+          "Welcome back, DEEPTHI C NAIR",
           style: TextStyle(
             fontSize: 32,
             fontWeight: FontWeight.w900,
@@ -179,7 +196,7 @@ class WelcomeSection extends StatelessWidget {
           ),
         ),
         Text(
-          "Monday, 30 October 2023 | System overview is looking good.",
+          "${_todayLabel()} | System overview is looking good.",
           style: TextStyle(color: onSurfaceVariant(context), fontSize: 14),
         ),
       ],
@@ -191,21 +208,36 @@ class WelcomeSection extends StatelessWidget {
 class MetricsGrid extends StatelessWidget {
   const MetricsGrid({super.key});
 
-  double _asDouble(dynamic value) {
-    if (value is num) {
-      return value.toDouble();
-    }
-    return double.tryParse(value?.toString() ?? '') ?? 0;
-  }
+  Future<int> _countTableRows({
+    required SupabaseClient client,
+    required String table,
+  }) async {
+    const pageSize = 1000;
+    var total = 0;
+    var from = 0;
 
-  int? _asInt(dynamic value) {
-    if (value is int) {
-      return value;
+    while (true) {
+      final page =
+          await client
+                  .from(table)
+                  .select('id')
+                  .order('id')
+                  .range(from, from + pageSize - 1)
+              as List<dynamic>;
+
+      final count = page.length;
+      if (count == 0) {
+        break;
+      }
+
+      total += count;
+      if (count < pageSize) {
+        break;
+      }
+      from += pageSize;
     }
-    if (value is num) {
-      return value.toInt();
-    }
-    return int.tryParse(value?.toString() ?? '');
+
+    return total;
   }
 
   String _formatCount(int value) {
@@ -302,10 +334,21 @@ class MetricsGrid extends StatelessWidget {
                                   value: _formatCount(buses.length),
                                   icon: Icons.directions_bus,
                                 ),
-                                MetricCard(
-                                  title: "TOTAL STUDENTS",
-                                  value: _formatCount(students.length),
-                                  icon: Icons.group,
+                                FutureBuilder<int>(
+                                  future: _countTableRows(
+                                    client: client,
+                                    table: 'students',
+                                  ),
+                                  builder: (context, countSnapshot) {
+                                    final studentCount = countSnapshot.data;
+                                    return MetricCard(
+                                      title: "TOTAL STUDENTS",
+                                      value: studentCount == null
+                                          ? '...'
+                                          : _formatCount(studentCount),
+                                      icon: Icons.group,
+                                    );
+                                  },
                                 ),
                                 MetricCard(
                                   title: "PENDING FEES",
@@ -385,79 +428,13 @@ class MetricCard extends StatelessWidget {
   }
 }
 
-// --- RESTORED: Middle Layout (Routes) ---
-class MiddleLayout extends StatelessWidget {
-  const MiddleLayout({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: surfaceColor(context),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "Live Fleet Status",
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: onSurface(context),
-            ),
-          ),
-          const SizedBox(height: 16),
-          _statusRow(context, "Route 01: Downtown Express", 0.78),
-          _statusRow(context, "Route 12: West Side Residential", 0.92),
-        ],
-      ),
-    );
-  }
-
-  Widget _statusRow(BuildContext context, String label, double progress) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  color: onSurface(context),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              Text(
-                "${(progress * 100).toInt()}%",
-                style: TextStyle(
-                  color: onSurface(context),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          LinearProgressIndicator(
-            value: progress,
-            color: Theme.of(context).primaryColor,
-            backgroundColor: inputFillColor(context),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 // --- RESTORED: Map Overview ---
 class FleetTrackingOverview extends StatelessWidget {
   const FleetTrackingOverview({super.key});
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
-    final mapHeight = (screenHeight * 0.35).clamp(250.0, 400.0);
+    final mapHeight = (screenHeight * 0.58).clamp(420.0, 760.0);
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
       child: SizedBox(
@@ -508,35 +485,70 @@ class Sidebar extends StatelessWidget {
         : screenWidth > 768
         ? 200.0
         : 70.0;
-    final dark = isDark(context);
     return Container(
+      height: double.infinity,
       width: sidebarWidth,
       color: surfaceColor(context),
-      padding: EdgeInsets.symmetric(
-        vertical: 24,
-        horizontal: screenWidth > 768 ? 12 : 0,
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          children: [
-            _logoHeader(context),
-            const SizedBox(height: 32),
-            _navItem(context, Icons.dashboard, "Dashboard", 0),
-            _navItem(context, Icons.payments_outlined, "Fees & Payments", 1),
-            _navItem(context, Icons.commute_outlined, "Fleet Management", 2),
-            _navItem(context, Icons.groups_outlined, "Bus-wise Students", 3),
-            _navItem(context, Icons.person_outline, "Student Management", 4),
-            _navItem(
-              context,
-              Icons.location_city_outlined,
-              "Boarding Stops",
-              5,
-            ),
-            _navItem(context, Icons.map_outlined, "Route Mapping", 6),
-            const SizedBox(height: 16),
-            _navItem(context, Icons.settings_outlined, "Settings", 7),
-            const SizedBox(height: 8),
-          ],
+      child: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            vertical: 12,
+            horizontal: screenWidth > 768 ? 12 : 0,
+          ),
+          child: Column(
+            children: [
+              _logoHeader(context),
+              const SizedBox(height: 24),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      _navItem(context, Icons.dashboard, "Dashboard", 0),
+                      _navItem(
+                        context,
+                        Icons.payments_outlined,
+                        "Fees & Payments",
+                        1,
+                      ),
+                      _navItem(
+                        context,
+                        Icons.commute_outlined,
+                        "Fleet Management",
+                        2,
+                      ),
+                      _navItem(
+                        context,
+                        Icons.groups_outlined,
+                        "Bus-wise Students",
+                        3,
+                      ),
+                      _navItem(
+                        context,
+                        Icons.person_outline,
+                        "Student Management",
+                        4,
+                      ),
+                      _navItem(
+                        context,
+                        Icons.location_city_outlined,
+                        "Boarding Stops",
+                        5,
+                      ),
+                      _navItem(context, Icons.map_outlined, "Route Mapping", 6),
+                      _navItem(
+                        context,
+                        Icons.alt_route_outlined,
+                        "Bus Allocation",
+                        7,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              _navItem(context, Icons.settings_outlined, "Settings", 8),
+            ],
+          ),
         ),
       ),
     );
