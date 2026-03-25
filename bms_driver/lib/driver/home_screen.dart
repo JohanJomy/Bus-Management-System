@@ -38,8 +38,15 @@ class DriverHomeScreen extends StatefulWidget {
 }
 
 class _DriverHomeScreenState extends State<DriverHomeScreen> {
+  static const String _realtimeDbUrl =
+      'https://bus-management-a7917-default-rtdb.asia-southeast1.firebasedatabase.app';
+
   bool isTripActive = false;
   final MapController _mapController = MapController();
+  late final FirebaseDatabase _realtimeDb = FirebaseDatabase.instanceFor(
+    app: FirebaseDatabase.instance.app,
+    databaseURL: _realtimeDbUrl,
+  );
   String _busNumber = 'Unknown';
   int _totalCapacity = 0;
   int? _busId;
@@ -115,7 +122,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
       return;
     }
 
-    final ref = FirebaseDatabase.instance.ref('buses/$_busId/location');
+    final ref = _realtimeDb.ref('buses/$_busId/location');
     await ref.set(busLocation.toJson());
     debugPrint('Firebase write success: buses/$_busId/location');
 
