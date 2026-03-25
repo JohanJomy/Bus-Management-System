@@ -320,7 +320,19 @@ class _FleetManagementScreenState extends State<FleetManagementScreen> {
 
   Widget _buildInventoryTable() {
     if (_buses.isEmpty) {
-      return Card(
+      return Container(
+        decoration: BoxDecoration(
+          color: surfaceColor(context),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: borderColor(context)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark(context) ? 0.0 : 0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Center(
@@ -333,7 +345,19 @@ class _FleetManagementScreenState extends State<FleetManagementScreen> {
       );
     }
 
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: surfaceColor(context),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor(context)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark(context) ? 0.0 : 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final isSmallScreen = constraints.maxWidth < 600;
@@ -626,9 +650,16 @@ class _SummaryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
+        color: surfaceColor(context),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!),
+        border: Border.all(color: borderColor(context)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark(context) ? 0.0 : 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -638,10 +669,10 @@ class _SummaryCard extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  color: Colors.grey,
+                  color: onSurfaceVariant(context),
                 ),
               ),
               Icon(icon, color: color, size: 24),
@@ -650,7 +681,11 @@ class _SummaryCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             value,
-            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: onSurface(context),
+            ),
           ),
         ],
       ),

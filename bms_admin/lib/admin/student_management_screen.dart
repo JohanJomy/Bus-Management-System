@@ -20,8 +20,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
 
   List<Student> _students = [];
   List<Student> _filteredStudents = [];
-  Map<int, double> _stopFeeMap = {};
-  Map<String, double> _studentPaidAmount = {};
+  Map<String, bool> _studentPaymentStatus = {};
   int _visibleCount = _pageSize;
   bool _isLoading = true;
   String? _errorMessage;
@@ -47,45 +46,46 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
         (a, b) => a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase()),
       );
 
-      // Load stops and payments data
-      final stopsData =
+      // Load payment status from payments table (joined per student)
+      final studentsWithPayments =
           await _studentService.getAllStudentsWithPayments();
 
-      // Build stop fee map
-      final Map<int, double> stopFeeMap = {};
-      final Map<String, double> studentPaidAmount = {};
-
-      // Extract stop fees from students data
-      for (final studentData in stopsData) {
-        final stopId = studentData['boarding_stop_id'];
-        final feeAmount = studentData['fee_amount'];
-        if (stopId is int && feeAmount != null) {
-          stopFeeMap[stopId] ??= (feeAmount as num).toDouble();
-        }
-
-        // Calculate paid amount per student per semester
+      final Map<String, bool> studentPaymentStatus = {};
+      for (final studentData in studentsWithPayments) {
         final studentId = studentData['id']?.toString();
-        final semester = studentData['semester'];
-        final payments = studentData['payments'] as List?;
+        final semester = _asInt(studentData['semester']);
+        final payments = studentData['payments'];
 
-        if (studentId != null && semester != null && payments != null) {
+        if (studentId != null && semester != null) {
           final key = '$studentId|$semester';
-          double totalPaid = 0;
-          for (final payment in payments) {
-            if (payment['status'] == true) {
-              totalPaid +=
-                  ((payment['amount_paid'] as num?)?.toDouble() ?? 0);
+          final paymentRows = payments is List ? payments : const <dynamic>[];
+          var paidInSemester = false;
+
+          for (final payment in paymentRows) {
+            if (payment is! Map) {
+              continue;
+            }
+
+            final paymentMap = payment.map(
+              (key, value) => MapEntry(key.toString(), value),
+            );
+            final paymentSemester = _asInt(paymentMap['semester']);
+            final isPaid = paymentMap['status'] == true;
+
+            if (isPaid && paymentSemester == semester) {
+              paidInSemester = true;
+              break;
             }
           }
-          studentPaidAmount[key] = totalPaid;
+
+          studentPaymentStatus[key] = paidInSemester;
         }
       }
 
       setState(() {
         _students = students;
         _filteredStudents = students;
-        _stopFeeMap = stopFeeMap;
-        _studentPaidAmount = studentPaidAmount;
+        _studentPaymentStatus = studentPaymentStatus;
         _visibleCount = _pageSize;
       });
     } catch (e) {
@@ -152,14 +152,21 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
   }
 
   bool _hasPaid(Student student) {
-    if (student.boardingStopId == null || student.semester == null) {
+    if (student.semester == null) {
       return false;
     }
-    final expectedFee =
-        _stopFeeMap[student.boardingStopId] ?? 0;
     final key = '${student.id}|${student.semester}';
-    final paidAmount = _studentPaidAmount[key] ?? 0;
-    return paidAmount >= expectedFee;
+    return _studentPaymentStatus[key] ?? false;
+  }
+
+  int? _asInt(dynamic value) {
+    if (value is int) {
+      return value;
+    }
+    if (value is num) {
+      return value.toInt();
+    }
+    return int.tryParse(value?.toString() ?? '');
   }
 
   @override
@@ -227,6 +234,15 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                   color: surfaceColor(context),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: borderColor(context)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(
+                        alpha: isDark(context) ? 0.0 : 0.02,
+                      ),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: LayoutBuilder(
                   builder: (context, constraints) {

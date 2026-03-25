@@ -5,6 +5,8 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LiveTrackingScreen extends StatefulWidget {
   const LiveTrackingScreen({super.key});
@@ -14,10 +16,18 @@ class LiveTrackingScreen extends StatefulWidget {
 }
 
 class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
+  static const String _realtimeDbUrl =
+      'https://bus-management-a7917-default-rtdb.asia-southeast1.firebasedatabase.app';
+      // 'https://bus-management-a7917-default-rtdb.asia-southeast1.firebasedatabase.app/'
+
   final MapController _mapController = MapController();
+  late final FirebaseDatabase _realtimeDb = FirebaseDatabase.instanceFor(
+    app: FirebaseDatabase.instance.app,
+    databaseURL: _realtimeDbUrl,
+  );
 
   // Saintgits College of Engineering (Approximate)
-  final LatLng _stopLocation = const LatLng(9.5042, 76.5521);
+  final LatLng _stopLocation = const LatLng(9.51029526369125, 76.5513379139054);
 
   // Live bus location fetched from Realtime Database
   LatLng? _busLocation;
@@ -26,6 +36,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   Timer? _busLocationTimer;
 
   bool _isBusActive = false;
+  int? _allocatedBusId;
+  String _busNumber = '--';
 
   LatLng? _currentPosition;
 
@@ -33,7 +45,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   void initState() {
     super.initState();
     _determinePosition();
-    _startBusLocationPolling();
+    _loadAllocatedBusInfo();
   }
 
   @override
@@ -43,50 +55,48 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   }
 
   Future<void> _determinePosition() async {
-    bool serviceEnabled;
-    LocationPermission permission;
+    try {
+      bool serviceEnabled;
+      LocationPermission permission;
 
-    // Test if location services are enabled.
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Location services are disabled.'),
-        ));
-      }
-      if (mounted) setState(() {});
-      return;
-    }
-
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
+      // Test if location services are enabled.
+      serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Location permissions are denied'),
+            content: Text('Location services are disabled.'),
           ));
         }
         if (mounted) setState(() {});
         return;
       }
-    }
 
-    if (permission == LocationPermission.deniedForever) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text(
-            'Location permissions are permanently denied, we cannot request permissions.',
-          ),
-        ));
+      permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text('Location permissions are denied'),
+            ));
+          }
+          if (mounted) setState(() {});
+          return;
+        }
       }
-      if (mounted) setState(() {});
-      return;
-    }
 
-    // When we reach here, permissions are granted and we can
-    // continue accessing the position of the device.
-    try {
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text(
+              'Location permissions are permanently denied, we cannot request permissions.',
+            ),
+          ));
+        }
+        if (mounted) setState(() {});
+        return;
+      }
+
       final position = await Geolocator.getCurrentPosition();
       setState(() {
         _currentPosition = LatLng(position.latitude, position.longitude);
@@ -124,10 +134,15 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   }
 
   void _startBusLocationPolling() {
+    if (_allocatedBusId == null) {
+      return;
+    }
+
     _busLocationTimer?.cancel();
 
-    final DatabaseReference ref =
-        FirebaseDatabase.instance.ref('buses/13/location');
+    final DatabaseReference ref = _realtimeDb.ref(
+      'buses/${_allocatedBusId!}/location',
+    );
 
     _busLocationTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
       try {
@@ -139,31 +154,126 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
 
         final Map data = value;
         final String status = (data['status'] ?? '').toString();
+        final lat = _asDouble(data['lat']);
+        final lng = _asDouble(data['lng']);
 
-        // Only update marker when the trip is active
-        if (status != 'active') {
-          if (!mounted) return;
-          setState(() {
-            _isBusActive = false;
-          });
-          return;
-        }
-
-        final latRaw = data['lat'];
-        final lngRaw = data['lng'];
-        if (latRaw is num && lngRaw is num) {
-          final LatLng newLocation = LatLng(latRaw.toDouble(), lngRaw.toDouble());
-
-          if (!mounted) return;
-          setState(() {
-            _busLocation = newLocation;
-            _isBusActive = true;
-          });
-        }
+        if (!mounted) return;
+        setState(() {
+          _isBusActive = status == 'active';
+          if (lat != null && lng != null) {
+            _busLocation = LatLng(lat, lng);
+          }
+        });
       } catch (e) {
         debugPrint('Error fetching bus location: $e');
       }
     });
+  }
+
+  Future<void> _loadAllocatedBusInfo() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final storedBusId = prefs.getInt('bus_id');
+      if (storedBusId != null) {
+        final busData = await Supabase.instance.client
+            .from('buses')
+            .select('bus_number')
+            .eq('id', storedBusId)
+            .maybeSingle();
+
+        final busNumber = busData?['bus_number']?.toString() ?? '--';
+        if (mounted) {
+          setState(() {
+            _allocatedBusId = storedBusId;
+            _busNumber = busNumber;
+          });
+          _startBusLocationPolling();
+        }
+        return;
+      }
+
+      final storedBusNumber = prefs.getString('bus_number') ?? '';
+      if (storedBusNumber.isNotEmpty && storedBusNumber != 'N/A') {
+        final busByNumber = await Supabase.instance.client
+            .from('buses')
+            .select('id, bus_number')
+            .eq('bus_number', storedBusNumber)
+            .maybeSingle();
+
+        final resolvedBusId = busByNumber?['id'];
+        final busId = resolvedBusId is int
+            ? resolvedBusId
+            : int.tryParse('$resolvedBusId');
+
+        if (busId != null) {
+          final busNumber = busByNumber?['bus_number']?.toString() ?? storedBusNumber;
+          if (mounted) {
+            setState(() {
+              _allocatedBusId = busId;
+              _busNumber = busNumber;
+            });
+            await prefs.setInt('bus_id', busId);
+            _startBusLocationPolling();
+          }
+          return;
+        }
+      }
+
+      final studentId = prefs.getString('student_id') ?? '';
+
+      if (studentId.isEmpty) {
+        return;
+      }
+
+      final manifestRows = await Supabase.instance.client
+          .from('daily_manifests')
+          .select('allocated_bus_id, manifest_date')
+          .eq('student_id', studentId)
+          .order('manifest_date', ascending: false)
+          .limit(1);
+
+      if (manifestRows.isEmpty) {
+        return;
+      }
+
+      final manifest = manifestRows.first;
+
+      final busIdRaw = manifest['allocated_bus_id'];
+      final busId = busIdRaw is int ? busIdRaw : int.tryParse('$busIdRaw');
+      if (busId == null) {
+        return;
+      }
+
+      final busData = await Supabase.instance.client
+          .from('buses')
+          .select('bus_number')
+          .eq('id', busId)
+          .maybeSingle();
+
+      final busNumber = busData?['bus_number']?.toString() ?? '--';
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _allocatedBusId = busId;
+        _busNumber = busNumber;
+      });
+
+      await prefs.setInt('bus_id', busId);
+
+      _startBusLocationPolling();
+    } catch (e) {
+      debugPrint('Error loading allocated bus info: $e');
+    }
+  }
+
+  double? _asDouble(dynamic value) {
+    if (value is num) {
+      return value.toDouble();
+    }
+    return double.tryParse(value?.toString() ?? '');
   }
 
   @override
@@ -198,7 +308,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
               MarkerLayer(
                 markers: [
                   // Bus Marker
-                  if (_busLocation != null && _isBusActive)
+                  if (_busLocation != null)
                     Marker(
                       point: _busLocation!,
                       width: 60,
@@ -431,15 +541,20 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                         ),
                       ),
                       const SizedBox(width: 16),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              "College Bus #13",
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                              _busNumber == '--' || _busNumber.isEmpty
+                                  ? 'College Bus'
+                                  : 'College Bus #$_busNumber',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
                             ),
-                            Text(
+                            const Text(
                               "Route: Kottayam - Saintgits",
                               style: TextStyle(color: Colors.grey, fontSize: 12),
                             ),

@@ -162,6 +162,7 @@ Future<void> _verifyStudentEmail(String email) async {
 
       // 3. Fetch Allocated Bus Number via Daily Manifest (Schema: Student -> Review Manifest -> Bus)
       String busNumber = 'N/A';
+      int? allocatedBusId;
       if (studentId.isNotEmpty) {
         try {
           debugPrint('Looking for daily_manifests for Student ID: $studentId');
@@ -176,11 +177,12 @@ Future<void> _verifyStudentEmail(String email) async {
 
           debugPrint('Manifest Query Result: $manifestList');
 
-          if (manifestList != null && (manifestList as List).isNotEmpty) {
+          if ((manifestList as List).isNotEmpty) {
             final manifestData = manifestList.first;
             final int? busId = manifestData['allocated_bus_id'] as int?;
             
             if (busId != null) {
+              allocatedBusId = busId;
               debugPrint('Found Bus ID: $busId, fetching details...');
               final busData = await Supabase.instance.client
                   .from('buses')
@@ -228,6 +230,11 @@ Future<void> _verifyStudentEmail(String email) async {
       await prefs.setString('email', studentData['email']?.toString() ?? '');
       await prefs.setString('branch', studentData['course']?.toString() ?? 'Unknown Branch'); // Mapping 'course' to 'branch'
       await prefs.setString('bus_number', busNumber);
+      if (allocatedBusId != null) {
+        await prefs.setInt('bus_id', allocatedBusId);
+      } else {
+        await prefs.remove('bus_id');
+      }
       await prefs.setString('bus_stop', busStop);
       await prefs.setString('fee_status', feeStatus);
       await prefs.setString('arrival_time', arrivalTime);

@@ -428,16 +428,18 @@ class _BusWiseStudentListScreenState extends State<BusWiseStudentListScreen> {
   }
 
   Widget _buildBusPanel() {
-    final dark = isDark(context);
-    final border = Theme.of(
-      context,
-    ).dividerColor.withValues(alpha: dark ? 0.45 : 0.85);
-
     return Container(
       decoration: BoxDecoration(
         color: surfaceColor(context),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: border),
+        border: Border.all(color: borderColor(context)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark(context) ? 0.0 : 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -517,7 +519,7 @@ class _BusWiseStudentListScreenState extends State<BusWiseStudentListScreen> {
                         border: Border.all(
                           color: isSelected
                               ? Theme.of(context).primaryColor
-                              : border,
+                              : borderColor(context),
                         ),
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -619,7 +621,14 @@ class _BusWiseStudentListScreenState extends State<BusWiseStudentListScreen> {
       decoration: BoxDecoration(
         color: surfaceColor(context),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: border),
+        border: Border.all(color: borderColor(context)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark(context) ? 0.0 : 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

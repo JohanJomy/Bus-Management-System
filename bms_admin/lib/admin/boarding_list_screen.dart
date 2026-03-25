@@ -443,6 +443,13 @@ class _BoardingListScreenState extends State<BoardingListScreen> {
         color: panelColor,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.0 : 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -661,6 +668,13 @@ class _BoardingListScreenState extends State<BoardingListScreen> {
         color: panelColor,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.0 : 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

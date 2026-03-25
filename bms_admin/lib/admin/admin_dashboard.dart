@@ -252,27 +252,15 @@ class MetricsGrid extends StatelessWidget {
     return buffer.toString();
   }
 
-  String _formatInrShort(double amount) {
-    if (amount >= 10000000) {
-      return '₹${(amount / 10000000).toStringAsFixed(1)}Cr';
-    }
-    if (amount >= 100000) {
-      return '₹${(amount / 100000).toStringAsFixed(1)}L';
-    }
-    if (amount >= 1000) {
-      return '₹${(amount / 1000).toStringAsFixed(1)}k';
-    }
-    return '₹${amount.toStringAsFixed(0)}';
+  String _formatCurrency(double amount) {
+    final intAmount = amount.truncateToDouble() == amount;
+    return intAmount
+        ? '₹${amount.toStringAsFixed(0)}'
+        : '₹${amount.toStringAsFixed(2)}';
   }
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final crossAxisCount = screenWidth > 1200
-        ? 3
-        : screenWidth > 768
-        ? 2
-        : 1;
     final client = Supabase.instance.client;
 
     return StreamBuilder<List<Map<String, dynamic>>>(
@@ -283,21 +271,30 @@ class MetricsGrid extends StatelessWidget {
         }
 
         return StreamBuilder<List<Map<String, dynamic>>>(
-          stream: client.from('students').stream(primaryKey: ['id']),
+          stream: client
+              .from('students')
+              .stream(primaryKey: ['id'])
+              .order('full_name'),
           builder: (context, studentsSnapshot) {
             if (!studentsSnapshot.hasData) {
               return const Center(child: CircularProgressIndicator());
             }
 
             return StreamBuilder<List<Map<String, dynamic>>>(
-              stream: client.from('stops').stream(primaryKey: ['id']),
+              stream: client
+                  .from('stops')
+                  .stream(primaryKey: ['id'])
+                  .order('stop_name'),
               builder: (context, stopsSnapshot) {
                 if (!stopsSnapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
                 return StreamBuilder<List<Map<String, dynamic>>>(
-                  stream: client.from('payments').stream(primaryKey: ['id']),
+                  stream: client
+                      .from('payments')
+                      .stream(primaryKey: ['id'])
+                      .order('created_at', ascending: false),
                   builder: (context, paymentsSnapshot) {
                     if (!paymentsSnapshot.hasData) {
                       return const Center(child: CircularProgressIndicator());
@@ -315,52 +312,53 @@ class MetricsGrid extends StatelessWidget {
 
                     return LayoutBuilder(
                       builder: (context, constraints) {
-                        final maxGridWidth = screenWidth > 1400
-                            ? 1120.0
-                            : constraints.maxWidth;
-                        return Center(
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(maxWidth: maxGridWidth),
-                            child: GridView.count(
-                              physics: const NeverScrollableScrollPhysics(),
-                              shrinkWrap: true,
-                              crossAxisCount: crossAxisCount,
-                              crossAxisSpacing: 18,
-                              mainAxisSpacing: 18,
-                              childAspectRatio: 2.35,
-                              children: [
-                                MetricCard(
-                                  title: "ACTIVE BUSES",
-                                  value: _formatCount(buses.length),
-                                  icon: Icons.directions_bus,
-                                ),
-                                FutureBuilder<int>(
-                                  future: _countTableRows(
-                                    client: client,
-                                    table: 'students',
-                                  ),
-                                  builder: (context, countSnapshot) {
-                                    final studentCount = countSnapshot.data;
-                                    return MetricCard(
-                                      title: "TOTAL STUDENTS",
-                                      value: studentCount == null
-                                          ? '...'
-                                          : _formatCount(studentCount),
-                                      icon: Icons.group,
-                                    );
-                                  },
-                                ),
-                                MetricCard(
-                                  title: "PENDING FEES",
-                                  value: _formatInrShort(
-                                    feeMetrics.pendingAmount,
-                                  ),
-                                  icon: Icons.warning,
-                                  color: Theme.of(context).colorScheme.error,
-                                ),
-                              ],
-                            ),
+                        final isCompact = constraints.maxWidth < 900;
+                        final cards = [
+                          MetricCard(
+                            title: "ACTIVE BUSES",
+                            value: _formatCount(buses.length),
+                            icon: Icons.directions_bus,
                           ),
+                          FutureBuilder<int>(
+                            future: _countTableRows(
+                              client: client,
+                              table: 'students',
+                            ),
+                            builder: (context, countSnapshot) {
+                              final studentCount = countSnapshot.data;
+                              return MetricCard(
+                                title: "TOTAL STUDENTS",
+                                value: studentCount == null
+                                    ? '...'
+                                    : _formatCount(studentCount),
+                                icon: Icons.group,
+                              );
+                            },
+                          ),
+                          MetricCard(
+                            title: "PENDING DUES",
+                            value: _formatCurrency(feeMetrics.pendingAmount),
+                            icon: Icons.warning,
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ];
+
+                        if (isCompact) {
+                          return Wrap(
+                            spacing: 18,
+                            runSpacing: 18,
+                            children: cards,
+                          );
+                        }
+
+                        return Row(
+                          children: [
+                            Expanded(child: cards[0]),
+                            const SizedBox(width: 18),
+                            Expanded(child: cards[1]),
+                            const SizedBox(width: 18),
+                            Expanded(child: cards[2]),
+                          ],
                         );
                       },
                     );
@@ -390,37 +388,45 @@ class MetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      constraints: const BoxConstraints(minHeight: 130),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: surfaceColor(context),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: borderColor(context)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark(context) ? 0.0 : 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color ?? Theme.of(context).primaryColor, size: 30),
-          const SizedBox(width: 14),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 title,
                 style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
                   color: onSurfaceVariant(context),
                 ),
               ),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: onSurface(context),
-                ),
-              ),
+              Icon(icon, color: color ?? Theme.of(context).primaryColor, size: 24),
             ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: onSurface(context),
+            ),
           ),
         ],
       ),
